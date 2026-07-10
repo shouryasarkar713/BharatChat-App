@@ -1,0 +1,112 @@
+// Real-time Chat Application — Prisma schema
+// SQLite datasource
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  username      String   @unique
+  passwordHash  String
+  avatarColor   String   @default("#10b981")
+  avatarUrl     String?  // optional profile picture URL (uploaded to /api/uploads)
+  bio           String?
+  publicKey     String?  // RSA-OAEP public key (base64) for E2E key wrapping
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberships   ConversationMember[]
+  messages      Message[]
+  reports       Report[]
+  readReceipts  ReadReceipt[]
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  type        String   @default("PRIVATE") // PRIVATE | GROUP
+  name        String?  // group name (nullable for private)
+  avatarColor String   @default("#0ea5e9")
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     ConversationMember[]
+  messages    Message[]
+
+  @@index([updatedAt])
+}
+
+model ConversationMember {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  role           String   @default("MEMBER") // OWNER | ADMIN | MEMBER
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  // Encrypted content (base64 of AES-GCM ciphertext) when E2E is enabled.
+  // For non-encrypted conversations, this is plain text.
+  content        String
+  contentType    String   @default("TEXT") // TEXT | FILE | IMAGE | VIDEO | AUDIO | SYSTEM
+  encrypted      Boolean  @default(false)
+  // Moderation: PENDING | APPROVED | FLAGGED | BLOCKED
+  moderation     String   @default("APPROVED")
+  // Optional attachment metadata (JSON string: url, name, size, mimeType)
+  attachment     String?
+  // Soft delete: deletedAt is set when sender (or admin) deletes the message.
+  // We keep the row for audit/history but hide it from clients.
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readReceipts   ReadReceipt[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model ReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  messageId   String
+  reporterId  String
+  reason      String
+  status      String   @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  createdAt   DateTime @default(now())
+
+  reporter    User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
