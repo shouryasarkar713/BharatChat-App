@@ -35,16 +35,16 @@ BharatChat is a premium, modern, and highly secure real-time messaging web appli
                         Handshake /    │ WebSockets
                         NextAuth JWT   │ (Port 3003)
                                        ▼
-                       ┌─────────────────────────────────┐
-                       │    Socket.IO Chat Service       │
-                       └────────────────┬────────────────┘
-                                        │
-                     RabbitMQ /         │ Database writes
-                     Memory Queue       │ (Prisma ORM)
-                                        ▼
-                       ┌─────────────────────────────────┐
-                       │         SQLite / DB             │
-                       └─────────────────────────────────┘
+                      ┌─────────────────────────────────┐
+                      │    Socket.IO Chat Service       │
+                      └────────────────┬────────────────┘
+                                       │
+                    RabbitMQ /         │ Database writes
+                    Memory Queue       │ (Prisma ORM)
+                                       ▼
+                      ┌─────────────────────────────────┐
+                      │         SQLite / DB             │
+                      └─────────────────────────────────┘
 ```
 
 ---
@@ -63,8 +63,8 @@ Follow these steps to configure and run BharatChat locally on your laptop:
 
 1. Clone this repository to your local machine:
    ```bash
-   git clone https://github.com/shouryasarkar713/BharatChat-App.git
-   cd BharatChat-App
+   git clone <your-repo-url>
+   cd bharatchat
    ```
 2. Install dependencies for the main Next.js application:
    ```bash
@@ -140,6 +140,22 @@ You need to run both the Next.js frontend and the Socket.IO chat service:
    * **Bob**: `bob@chat.dev` / `password123`
    * **Carol**: `carol@chat.dev` / `password123`
 3. You can log in as Alice in one browser window and Bob in another (e.g. Incognito) to start exchanging encrypted, real-time messages!
+
+---
+
+### Step 6: Run tests and coverage
+
+The project contains a Jest and React Testing Library suite covering core utility libraries (cryptography, content moderation), React hooks, and UI components:
+
+1. **Run all tests**:
+   ```bash
+   npm run test
+   ```
+2. **Generate test coverage reports**:
+   ```bash
+   npm run test:coverage
+   ```
+   Interactive HTML reports can be viewed under the `/coverage/lcov-report/index.html` directory.
 
 ---
 
