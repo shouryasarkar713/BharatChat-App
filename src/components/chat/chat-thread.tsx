@@ -195,7 +195,6 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
 
     // Moderation (client-side preview; server-side also runs)
     const mod = moderateMessage(plaintext)
-    const finalText = mod.cleaned || plaintext
     if (mod.status === 'BLOCKED') {
       toast.error('Message blocked', { description: mod.reason })
       setSending(false)
@@ -206,12 +205,12 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
     }
 
     // Encrypt if E2E is on
-    let contentToSend = finalText
+    let contentToSend = plaintext
     let encrypted = false
     if (e2eEnabled.current) {
       const key = await getCachedAesKey(activeId)
       if (key) {
-        contentToSend = await encryptMessage(key, finalText)
+        contentToSend = await encryptMessage(key, plaintext)
         encrypted = true
       }
     }
@@ -235,7 +234,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       tempId,
     }
     addMessage(tempMsg)
-    if (encrypted) setDecrypted(activeId, tempId, finalText)
+    if (encrypted) setDecrypted(activeId, tempId, plaintext)
 
     try {
       const sock = await getSocket(currentUserId)
@@ -624,10 +623,19 @@ function MessageBubble({
   showAvatar: boolean
   onDeleteMessage: (messageId: string) => void
 }) {
+  const showProfanity = useChatStore((s) => s.showProfanity)
   const [showActions, setShowActions] = useState(false)
   const isFlagged = message.moderation === 'FLAGGED'
   const isBlocked = message.moderation === 'BLOCKED'
   const isDeleted = !!message.deletedAt
+
+  let textToRender = displayContent
+  if (!showProfanity && displayContent && displayContent !== 'Decrypting...') {
+    const mod = moderateMessage(displayContent)
+    if (mod.cleaned) {
+      textToRender = mod.cleaned
+    }
+  }
 
   if (message.contentType === 'SYSTEM') {
     return (
@@ -700,7 +708,7 @@ function MessageBubble({
             {message.attachment ? (
               <AttachmentView attachment={message.attachment} isMe={isMe} />
             ) : message.contentType === 'TEXT' ? (
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{displayContent}</p>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{textToRender}</p>
             ) : null}
           </div>
           {/* Hover actions — delete button for own messages */}

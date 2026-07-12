@@ -32,6 +32,15 @@ export function ChatApp() {
     ;(window as any).__pulsechatPush = push
   }, [push])
 
+  // Restore showProfanity setting on mount
+  const setShowProfanity = useChatStore((s) => s.setShowProfanity)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('bharatchat-show-profanity') === 'true'
+      setShowProfanity(stored)
+    }
+  }, [setShowProfanity])
+
   // Persist current user to store
   useEffect(() => {
     if (!userId || !userName) return
@@ -59,70 +68,64 @@ export function ChatApp() {
     async function load() {
       try {
         const res = await fetch('/api/conversations')
-        if (!res.ok) return
-        const data = await res.json()
-        if (cancelled) return
-        setConversations(
-          data.conversations.map((c: any) => ({
-            ...c,
-            unreadCount: 0,
-          }))
-        )
-        setLoadedConvs(true)
+        if (res.ok && !cancelled) {
+          const data = await res.json()
+          setConversations(data.conversations)
+        }
       } catch (e) {
-        console.error('failed to load conversations', e)
+        console.error('load conversations failed', e)
+      } finally {
+        if (!cancelled) setLoadedConvs(true)
       }
     }
     load()
-    // Refresh every 30s as a fallback (the socket handles real-time updates)
-    const interval = setInterval(load, 30 * 1000)
     return () => {
       cancelled = true
-      clearInterval(interval)
     }
   }, [status, setConversations])
 
-  // For mobile: when activeId changes, show the thread
   useEffect(() => {
-    Promise.resolve().then(() => {
-      if (activeId) setMobileShowThread(true)
-      else setMobileShowThread(false)
-    })
+    if (activeId) setMobileShowThread(true)
   }, [activeId])
 
-  if (status === 'loading') {
+  if (status === 'loading' || (status === 'authenticated' && !storeCurrentUser)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground font-medium">Connecting to BharatChat...</p>
+        </div>
       </div>
     )
   }
 
-  if (status !== 'authenticated' || !userId) {
+  if (status === 'unauthenticated') {
     return null
   }
 
-  const currentUser = storeCurrentUser
-  const sidebarUser = currentUser
-    ? {
-        id: currentUser.id,
-        name: currentUser.name,
-        avatarColor: currentUser.avatarColor,
-        avatarUrl: currentUser.avatarUrl,
-        username: currentUser.username,
-        email: currentUser.email,
-        bio: currentUser.bio ?? null,
-      }
-    : { id: userId, name: userName || '', avatarColor: '#10b981', username: '', email: '', bio: null, avatarUrl: null }
-
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <div className={`${mobileShowThread ? 'hidden md:flex' : 'flex'} w-full md:w-auto flex-shrink-0`}>
-        <Sidebar currentUser={sidebarUser} />
-      </div>
-      <div className={`${mobileShowThread ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>
-        <ChatThread currentUserId={userId} onBack={() => setMobileShowThread(false)} />
+    <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex-1 flex relative">
+        <div className={cn(
+          "absolute md:relative inset-0 md:flex flex-shrink-0 z-20 md:z-auto transition-transform duration-300",
+          mobileShowThread ? "-translate-x-full md:translate-x-0" : "translate-x-0"
+        )}>
+          <Sidebar currentUser={storeCurrentUser as any} />
+        </div>
+        <div className={cn(
+          "absolute md:relative inset-0 md:flex flex-1 z-10 md:z-auto transition-transform duration-300",
+          mobileShowThread ? "translate-x-0" : "translate-x-full md:translate-x-0"
+        )}>
+          <ChatThread
+            currentUserId={userId!}
+            onBack={() => setMobileShowThread(false)}
+          />
+        </div>
       </div>
     </div>
   )
+}
+
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ')
 }

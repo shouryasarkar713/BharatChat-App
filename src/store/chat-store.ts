@@ -64,6 +64,8 @@ interface ChatState {
   decrypted: Record<string, string> // key: `${conversationId}:${messageId}` -> plaintext
   searchTargetMessageId: string | null
   setSearchTargetMessageId: (id: string | null) => void
+  showProfanity: boolean
+  setShowProfanity: (show: boolean) => void
   setCurrentUser: (u: ChatUser) => void
   setSocketConnected: (c: boolean) => void
   setConversations: (c: Conversation[]) => void
@@ -91,6 +93,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   socketConnected: false,
   decrypted: {},
   searchTargetMessageId: null,
+  showProfanity: false,
 
   setCurrentUser: (u) => set({ currentUser: u }),
   setSocketConnected: (c) => set({ socketConnected: c }),
@@ -207,6 +210,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }),
 
   setSearchTargetMessageId: (id) => set({ searchTargetMessageId: id }),
+  setShowProfanity: (show) => {
+    set({ showProfanity: show })
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bharatchat-show-profanity', show ? 'true' : 'false')
+    }
+  },
 
   reset: () =>
     set({
@@ -219,6 +228,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       socketConnected: false,
       decrypted: {},
       searchTargetMessageId: null,
+      showProfanity: false,
     }),
 }))
 

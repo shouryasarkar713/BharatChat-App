@@ -11,6 +11,7 @@ import { Loader2, Check, Camera, Trash2, Bell, BellOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useChatStore } from '@/store/chat-store'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 
 const AVATAR_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#6366f1', '#84cc16']
@@ -53,6 +54,8 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
   }, [open])
 
   const setCurrentUser = useChatStore((s) => s.setCurrentUser)
+  const showProfanity = useChatStore((s) => s.showProfanity)
+  const setShowProfanity = useChatStore((s) => s.setShowProfanity)
   const push = usePushNotifications()
   const [pushEnabled, setPushEnabled] = useState(false)
 
@@ -268,6 +271,25 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
               placeholder="Tell us about yourself..."
             />
             <p className="text-[11px] text-muted-foreground text-right">{bio.length}/280</p>
+          </div>
+
+          {/* Content Preferences */}
+          <div className="space-y-2 pt-2 border-t">
+            <Label>Content Preferences</Label>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Show Profanity
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Display raw, uncensored offensive words instead of ****
+                </p>
+              </div>
+              <Switch
+                checked={showProfanity}
+                onCheckedChange={setShowProfanity}
+              />
+            </div>
           </div>
 
           {/* Push notifications */}
