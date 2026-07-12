@@ -21,7 +21,7 @@ import { getQueue, QueueJob } from './queue'
 
 const db = new PrismaClient()
 
-const PORT = 3003
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3003
 
 // ----------------------------------------------------------------------------
 // Presence store: maps userId -> { socketIds: Set, status, lastActiveAt }
