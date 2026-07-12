@@ -5,14 +5,22 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma
 
-# Install all workspace dependencies
+# Install root dependencies
 RUN npm install
 
-# Generate Prisma Client
+# Copy chat-service package configs
+COPY mini-services/chat-service/package*.json ./mini-services/chat-service/
+
+# Install chat-service dependencies
+WORKDIR /app/mini-services/chat-service
+RUN npm install
+
+# Generate Prisma Client in the root node_modules
+WORKDIR /app
 RUN npx prisma generate
 
-# Copy chat service code
-COPY mini-services/chat-service ./mini-services/chat-service
+# Copy the rest of the workspace files
+COPY . .
 
 # Expose Socket.IO port
 EXPOSE 3003
