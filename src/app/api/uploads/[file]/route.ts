@@ -1,8 +1,11 @@
 import { readFile, stat } from 'fs/promises'
 import path from 'path'
+import os from 'os'
 import { NextResponse } from 'next/server'
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads')
+const UPLOAD_DIR = process.env.VERCEL || process.env.NODE_ENV === 'production'
+  ? path.join(os.tmpdir(), 'uploads')
+  : path.join(process.cwd(), 'uploads')
 
 const MIME_EXT: Record<string, string> = {
   '.png': 'image/png',
