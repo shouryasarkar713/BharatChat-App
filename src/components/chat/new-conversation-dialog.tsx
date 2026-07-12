@@ -18,6 +18,7 @@ interface UserResult {
   username: string
   email: string
   avatarColor: string
+  avatarUrl?: string | null
   lastSeenAt: string
 }
 
@@ -38,6 +39,10 @@ export function NewConversationDialog({
   const [creating, setCreating] = useState(false)
   const upsertConversation = useChatStore((s) => s.upsertConversation)
   const setActive = useChatStore((s) => s.setActiveConversation)
+
+  // Reset form when dialog closes (using key-based reset via open prop)
+  // Instead of useEffect+setState, we use a derived key in the parent Dialog
+  // For simplicity we use a manual reset on close via onOpenChange handler
 
   // Debounced search using a ref-based timer
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -153,6 +158,7 @@ export function NewConversationDialog({
           )}
 
           <div className="relative">
+            <Check className="hidden" /> {/* Keep search icon context clean */}
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-8"
