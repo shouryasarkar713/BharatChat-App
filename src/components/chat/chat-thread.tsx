@@ -59,6 +59,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevMsgCountRef = useRef(0)
   const atBottomRef = useRef(true)
+  const prevActiveIdRef = useRef<string | null>(null)
   const e2eEnabled = useRef(true) // for demo, all new chats are encrypted
 
   const loadMessages = useCallback(
@@ -118,12 +119,34 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   // Auto-scroll to bottom when new messages arrive (if user is at bottom)
   useEffect(() => {
     if (!scrollRef.current) return
-    if (atBottomRef.current || messages.length - prevMsgCountRef.current === 1) {
+    
+    // Check if the conversation ID has changed since the last render
+    const isNewConv = activeId !== prevActiveIdRef.current
+    prevActiveIdRef.current = activeId
+
+    if (isNewConv) {
+      // If we switched conversations, we should scroll to bottom ONLY if we don't have a search target
+      if (searchTargetMessageId) {
+        atBottomRef.current = false
+      } else {
+        atBottomRef.current = true
+        const el = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+        if (el) el.scrollTop = el.scrollHeight
+      }
+      prevMsgCountRef.current = messages.length
+      return
+    }
+
+    // If it's the same conversation, use normal auto-scroll logic
+    const wasNewMessage = messages.length - prevMsgCountRef.current === 1
+    const targetMsgId = useChatStore.getState().searchTargetMessageId
+
+    if (!targetMsgId && (atBottomRef.current || wasNewMessage)) {
       const el = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
       if (el) el.scrollTop = el.scrollHeight
     }
     prevMsgCountRef.current = messages.length
-  }, [messages])
+  }, [messages, activeId, searchTargetMessageId])
 
   // Scroll to search target message when selected
   useEffect(() => {
