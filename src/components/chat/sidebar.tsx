@@ -50,7 +50,10 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
               <MessageSquare className="h-5.5 w-5.5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-extrabold leading-tight tracking-wide text-md text-foreground">BharatChat</h1>
+              <h1 className="font-extrabold leading-tight tracking-wide text-md text-foreground flex items-center gap-[2px]">
+                <span className="shirorekha-segment">Bharat</span>
+                <span className="shirorekha-segment">Chat</span>
+              </h1>
               <div className="flex items-center gap-1.5 text-[10px] font-semibold mt-0.5">
                 {socketConnected ? (
                   <>

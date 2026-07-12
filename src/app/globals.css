@@ -163,7 +163,8 @@
 
   /* Refined scrollbars — warm stone tints */
   ::-webkit-scrollbar {
-    @apply w-2 h-2;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -219,6 +220,35 @@
   }
   .dark .text-gradient {
     color: var(--primary);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Typographic nod: Shirorekha (शिरोरेखा) segment style             */
+  /* ---------------------------------------------------------------- */
+  .shirorekha-segment {
+    position: relative;
+    display: inline-block;
+    padding-top: 0.15em;
+  }
+  .shirorekha-segment::after {
+    content: '';
+    position: absolute;
+    top: 0.14em; /* Positioned exactly at the cap-height of Inter */
+    left: 0;
+    right: 0;
+    height: 0.06em; /* Scale-proportionate bar thickness (~2px at normal size) */
+    background-color: var(--primary);
+    pointer-events: none;
+  }
+  .shirorekha-segment::before {
+    content: '';
+    position: absolute;
+    top: 0.14em;
+    left: 0;
+    width: 0.06em; /* Same thickness as the bar */
+    height: 0.22em; /* Proportionate vertical hanging line length */
+    background-color: var(--primary);
+    pointer-events: none;
   }
 
   /* ---------------------------------------------------------------- */
