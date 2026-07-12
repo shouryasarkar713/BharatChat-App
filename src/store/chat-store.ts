@@ -62,7 +62,8 @@ interface ChatState {
   socketConnected: boolean
   // decryption cache: conversationId -> decrypted content for message id
   decrypted: Record<string, string> // key: `${conversationId}:${messageId}` -> plaintext
-
+  searchTargetMessageId: string | null
+  setSearchTargetMessageId: (id: string | null) => void
   setCurrentUser: (u: ChatUser) => void
   setSocketConnected: (c: boolean) => void
   setConversations: (c: Conversation[]) => void
@@ -89,6 +90,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentUser: null,
   socketConnected: false,
   decrypted: {},
+  searchTargetMessageId: null,
 
   setCurrentUser: (u) => set({ currentUser: u }),
   setSocketConnected: (c) => set({ socketConnected: c }),
@@ -204,6 +206,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }),
 
+  setSearchTargetMessageId: (id) => set({ searchTargetMessageId: id }),
+
   reset: () =>
     set({
       conversations: [],
@@ -214,6 +218,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentUser: null,
       socketConnected: false,
       decrypted: {},
+      searchTargetMessageId: null,
     }),
 }))
 

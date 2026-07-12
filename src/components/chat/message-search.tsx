@@ -112,7 +112,10 @@ export function MessageSearch({ query, currentUserId, onBack, onSelectConversati
               return (
                 <button
                   key={`${r.conversationId}:${r.messageId}`}
-                  onClick={() => onSelectConversation(r.conversationId)}
+                  onClick={() => {
+                    useChatStore.getState().setSearchTargetMessageId(r.messageId)
+                    onSelectConversation(r.conversationId)
+                  }}
                   className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted/60 transition-colors flex items-start gap-3"
                 >
                   <Avatar name={r.conversationName} color={r.conversationAvatarColor} size="md" />

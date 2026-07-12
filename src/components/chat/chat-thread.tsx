@@ -44,6 +44,8 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const setActive = useChatStore((s) => s.setActiveConversation)
   const updateLastRead = useChatStore((s) => s.updateLastRead)
   const deleteMessageStore = useChatStore((s) => s.deleteMessage)
+  const searchTargetMessageId = useChatStore((s) => s.searchTargetMessageId)
+  const setSearchTargetMessageId = useChatStore((s) => s.setSearchTargetMessageId)
 
   const conv = conversations.find((c) => c.id === activeId)
   const messages = activeId ? messagesByConv[activeId] || [] : []
@@ -122,6 +124,30 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
     }
     prevMsgCountRef.current = messages.length
   }, [messages])
+
+  // Scroll to search target message when selected
+  useEffect(() => {
+    if (!searchTargetMessageId || messages.length === 0) return
+
+    // Find the message element in the DOM
+    const targetEl = document.getElementById(`msg-${searchTargetMessageId}`)
+    if (targetEl) {
+      // Scroll the target element into view smoothly and center it
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+      // Highlight the target bubble
+      const bubble = targetEl.querySelector('.rounded-2xl') as HTMLElement
+      if (bubble) {
+        bubble.classList.add('ring-4', 'ring-primary/50', 'bg-primary/10', 'animate-pulse')
+        setTimeout(() => {
+          bubble.classList.remove('ring-4', 'ring-primary/50', 'bg-primary/10', 'animate-pulse')
+        }, 2200)
+      }
+
+      // Reset the target ID in the store
+      setSearchTargetMessageId(null)
+    }
+  }, [searchTargetMessageId, messages, setSearchTargetMessageId])
 
   // Try to decrypt new encrypted messages as they arrive
   useEffect(() => {
@@ -440,8 +466,8 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
             <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
               <span className="flex gap-1">
                 <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" />
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '150ms' }} />
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '300ms' }} />
+                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '150ms' }} style={{ animationDelay: '150ms' }} />
+                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '300ms' }} style={{ animationDelay: '300ms' }} />
               </span>
               <span>
                 {typingNames.length === 1
@@ -535,7 +561,7 @@ function MessageList({
           : m.content
 
         return (
-          <div key={m.id} className="animate-message-in">
+          <div key={m.id} id={`msg-${m.id}`} className="animate-message-in">
             {showDate && (
               <div className="flex items-center gap-4 my-4 relative" aria-label={format(new Date(m.createdAt), 'MMMM d, yyyy')}>
                 <div className="flex-1 jaali-line" aria-hidden="true" />
