@@ -35,9 +35,8 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased bg-background text-foreground`}>
+      <body className={`${inter.variable} antialiased bg-background text-foreground bg-grain`}>
         <Providers>{children}</Providers>
-        <div className="fixed inset-0 pointer-events-none z-30 opacity-[0.03] dark:opacity-[0.04] mix-blend-multiply dark:mix-blend-soft-light bg-grain-texture" aria-hidden="true" />
       </body>
     </html>
   );

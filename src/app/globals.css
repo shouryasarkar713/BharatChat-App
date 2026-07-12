@@ -163,8 +163,7 @@
 
   /* Refined scrollbars — warm stone tints */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    @apply w-2 h-2;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -225,9 +224,20 @@
   /* ---------------------------------------------------------------- */
   /* Grain Texture Utility                                            */
   /* ---------------------------------------------------------------- */
-  .bg-grain-texture {
+  .bg-grain::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 30; /* Above layout content/headers, below dialogs (z-50) */
+    opacity: 0.03;
+    mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
     background-size: 300px 300px;
+  }
+  .dark .bg-grain::before {
+    opacity: 0.04;
+    mix-blend-mode: soft-light;
   }
 
   /* ---------------------------------------------------------------- */
