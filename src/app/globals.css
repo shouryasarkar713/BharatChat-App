@@ -233,19 +233,19 @@
   .shirorekha-segment::after {
     content: '';
     position: absolute;
-    top: 0.14em; /* Positioned exactly at the cap-height of Inter */
+    top: 0.25em; /* Positioned exactly touching the top edges of capital letters */
     left: 0;
     right: 0;
-    height: 0.06em; /* Scale-proportionate bar thickness (~2px at normal size) */
+    height: 0.07em; /* Scale-proportionate bar thickness */
     background-color: var(--primary);
     pointer-events: none;
   }
   .shirorekha-segment::before {
     content: '';
     position: absolute;
-    top: 0.14em;
+    top: 0.25em;
     left: 0;
-    width: 0.06em; /* Same thickness as the bar */
+    width: 0.07em; /* Same thickness as the bar */
     height: 0.22em; /* Proportionate vertical hanging line length */
     background-color: var(--primary);
     pointer-events: none;
