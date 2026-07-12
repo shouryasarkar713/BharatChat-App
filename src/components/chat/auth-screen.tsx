@@ -48,7 +48,14 @@ export function AuthScreen() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error('Registration failed', { description: data.error || 'Try again' })
+        let desc = data.error || 'Try again'
+        if (data.details?.fieldErrors) {
+          const errors = Object.entries(data.details.fieldErrors)
+            .map(([field, msgs]: [string, any]) => `${field}: ${msgs.join(', ')}`)
+            .join('; ')
+          if (errors) desc = errors
+        }
+        toast.error('Registration failed', { description: desc })
       } else {
         await fetch('/api/auth/seed', { method: 'POST' }).catch(() => {})
         await signIn('credentials', {
