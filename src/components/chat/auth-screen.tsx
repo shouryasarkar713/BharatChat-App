@@ -74,9 +74,18 @@ export function AuthScreen() {
   async function handleSeedAndLogin() {
     setLoading(true)
     toast.info('Seeding demo accounts...')
-    await fetch('/api/auth/seed', { method: 'POST' })
+    try {
+      const res = await fetch('/api/auth/seed', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error('Seeding failed', { description: data.error || 'Check server logs' })
+      } else {
+        toast.success('Demo accounts ready! alice@chat.dev / password123')
+      }
+    } catch (e) {
+      toast.error('Seeding failed', { description: 'Connection error' })
+    }
     setLoading(false)
-    toast.success('Demo accounts ready! alice@chat.dev / password123')
   }
 
   return (
