@@ -6,7 +6,7 @@ import { Avatar } from './avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Trash2, Mic } from 'lucide-react'
+import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic } from 'lucide-react'
 import { getSocket } from '@/lib/socket'
 import { format, isSameDay } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -57,7 +57,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevMsgCountRef = useRef(0)
   const atBottomRef = useRef(true)
-  const e2eEnabled = useRef(true) // new chats are encrypted by default
+  const e2eEnabled = useRef(true) // for demo, all new chats are encrypted
 
   const loadMessages = useCallback(
     async (convId: string, cursor: string | null, replace: boolean) => {
@@ -85,8 +85,9 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   async function initConversationKey(convId: string) {
     let key = await getCachedAesKey(convId)
     if (!key) {
-      // Generate a new key for this conversation.
-      // In this environment, we derive a key based on the conversation ID to allow all members to decrypt.
+      // Generate a new key for this conversation (the demo: all clients must derive the same key)
+      // For a true E2E flow you'd wrap this with each member's RSA public key. Here we use a
+      // deterministic key derived from the conversation id so all members can decrypt.
       const seed = convId + ':pulsechat-e2e-seed-v1'
       const seedBytes = new TextEncoder().encode(seed)
       const hashBuf = await crypto.subtle.digest('SHA-256', seedBytes)
@@ -329,10 +330,11 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
 
   if (!activeId || !conv) {
     return (
-      <main className="flex-1 flex items-center justify-center bg-background bg-mesh">
-        <div className="text-center max-w-md p-8">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-emerald-600 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-            <MessageSquare className="h-8 w-8 text-primary-foreground" />
+      <main className="flex-1 flex items-center justify-center bg-background bg-mesh relative overflow-hidden">
+        <div className="absolute inset-0 jaali-watermark pointer-events-none" aria-hidden="true" />
+        <div className="text-center max-w-md p-8 relative z-10">
+          <div className="h-16 w-16 rounded-2xl bg-accent-foreground/10 mx-auto flex items-center justify-center mb-4 border border-accent-foreground/20">
+            <MessageSquare className="h-8 w-8 text-accent-foreground" />
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-1">Welcome to BharatChat</h2>
           <p className="text-sm text-muted-foreground">
@@ -379,7 +381,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <h2 className="font-semibold text-foreground truncate text-sm sm:text-base">{conv.name}</h2>
-            <Lock className="h-3 w-3 text-primary flex-shrink-0" />
+            <Lock className="h-3 w-3 text-accent-foreground flex-shrink-0" />
           </div>
           <p className="text-[10px] sm:text-xs text-muted-foreground/80 truncate">
             {isGroup ? (
@@ -403,7 +405,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
             )}
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold text-primary bg-primary/8 border border-primary/15 px-2.5 py-1 rounded-full">
+        <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold text-accent-foreground bg-accent border border-accent-foreground/15 px-2.5 py-1 rounded-full">
           <ShieldCheck className="h-3.5 w-3.5" />
           <span>E2E encrypted</span>
         </div>
@@ -419,8 +421,8 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
           )}
           {messages.length === 0 ? (
             <div className="text-center py-12">
-              <div className="h-14 w-14 rounded-2xl bg-muted mx-auto flex items-center justify-center mb-3">
-                <MessageSquare className="h-7 w-7 text-muted-foreground/60" />
+              <div className="h-14 w-14 rounded-2xl bg-accent/40 mx-auto flex items-center justify-center mb-3 border border-accent-foreground/15">
+                <MessageSquare className="h-7 w-7 text-accent-foreground/80" />
               </div>
               <p className="text-sm text-muted-foreground">No messages yet — say hello!</p>
             </div>
@@ -490,7 +492,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
           <Button
             onClick={handleSend}
             disabled={sending || !input.trim()}
-            className="bg-gradient-to-tr from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95 text-primary-foreground font-semibold rounded-xl h-9.5 w-9.5 p-0 flex-shrink-0 transition-transform active:scale-95 shadow-md shadow-primary/10"
+            className="bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-xl h-9.5 w-9.5 p-0 flex-shrink-0 transition-transform active:scale-95 shadow-md shadow-primary/10"
             size="icon"
           >
             <Send className="h-4 w-4" />
@@ -534,10 +536,12 @@ function MessageList({
         return (
           <div key={m.id} className="animate-message-in">
             {showDate && (
-              <div className="flex items-center justify-center my-3">
-                <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
+              <div className="flex items-center gap-4 my-4 relative" aria-label={format(new Date(m.createdAt), 'MMMM d, yyyy')}>
+                <div className="flex-1 jaali-line" aria-hidden="true" />
+                <span className="text-[11px] font-semibold text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-0.5 rounded-md relative z-10">
                   {format(new Date(m.createdAt), 'MMMM d, yyyy')}
                 </span>
+                <div className="flex-1 jaali-line" aria-hidden="true" />
               </div>
             )}
             <MessageBubble
@@ -637,7 +641,7 @@ function MessageBubble({
             className={cn(
               'px-3.5 py-2.5 rounded-2xl break-words shadow-md leading-relaxed text-sm',
               isMe
-                ? 'bg-gradient-to-br from-primary to-indigo-600 text-primary-foreground rounded-tr-none shadow-primary/5'
+                ? 'bg-primary text-primary-foreground rounded-tr-none shadow-primary/5'
                 : 'bg-card text-card-foreground border border-border/30 rounded-tl-none shadow-sm',
               isFlagged && !isMe && 'ring-1 ring-amber-400/50',
               isBlocked && 'opacity-60 italic'

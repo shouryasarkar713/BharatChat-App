@@ -6,7 +6,7 @@ import { Avatar } from './avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, MessageSquare, Users, LogOut, Settings, X } from 'lucide-react'
+import { Plus, Search, MessageSquare, Users, LogOut, Wifi, WifiOff, Settings, X } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -46,11 +46,11 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
       <div className="p-4 border-b border-border/40 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-indigo-700 flex items-center justify-center shadow-md shadow-primary/20 transform hover:rotate-3 transition-transform">
+            <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center shadow-md shadow-primary/20 transform hover:rotate-3 transition-transform">
               <MessageSquare className="h-5.5 w-5.5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-extrabold leading-tight tracking-wide text-md bg-gradient-to-r from-foreground via-primary to-indigo-600 bg-clip-text text-transparent">BharatChat</h1>
+              <h1 className="font-extrabold leading-tight tracking-wide text-md text-foreground">BharatChat</h1>
               <div className="flex items-center gap-1.5 text-[10px] font-semibold mt-0.5">
                 {socketConnected ? (
                   <>
@@ -144,7 +144,7 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
           )}
           <Button
             size="icon"
-            className="h-9.5 w-9.5 bg-gradient-to-tr from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95 text-primary-foreground font-semibold rounded-xl flex-shrink-0 transition-all hover:translate-y-[-1px] active:translate-y-[0px]"
+            className="h-9.5 w-9.5 bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-xl flex-shrink-0 transition-all hover:translate-y-[-1px] active:translate-y-[0px]"
             onClick={() => setShowNew(true)}
             title="New conversation"
           >
@@ -234,7 +234,7 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
                           {lastMsg?.encrypted ? '🔒 Encrypted' : lastMsg?.deletedAt ? '🚫 Message deleted' : lastMsgText}
                         </p>
                         {unread > 0 && (
-                          <span className="bg-chart-3 text-white text-[9.5px] font-extrabold h-4.5 min-w-4.5 px-1.5 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm animate-pulse">
+                          <span className="bg-primary text-primary-foreground text-[9.5px] font-extrabold h-4.5 min-w-4.5 px-1.5 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                             {unread}
                           </span>
                         )}

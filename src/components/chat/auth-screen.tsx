@@ -90,20 +90,20 @@ export function AuthScreen() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background bg-mesh p-4 relative overflow-hidden">
-      {/* Premium floating glowing orbs */}
-      <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary/8 blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-indigo-500/8 blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }} />
+      {/* Decorative jaali pattern circles — replace generic gradient orbs */}
+      <div className="absolute top-1/4 left-1/4 h-96 w-96 jaali-circle pointer-events-none" aria-hidden="true" />
+      <div className="absolute bottom-1/4 right-1/4 h-80 w-80 jaali-circle pointer-events-none" aria-hidden="true" />
 
       <div className="w-full max-w-md relative z-10">
         <div className="flex flex-col items-center mb-8">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-primary/20 mb-4 transform hover:scale-105 transition-transform duration-200">
-            <MessageSquare className="h-8 w-8 text-white" />
+          <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 mb-4 transform hover:scale-105 transition-transform duration-200">
+            <MessageSquare className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-primary to-indigo-600 bg-clip-text text-transparent pb-1">BharatChat</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground pb-1">BharatChat</h1>
           <p className="text-sm text-muted-foreground mt-1.5 font-medium tracking-wide">Real-time end-to-end encrypted chat</p>
         </div>
 
-        {/* Feature badges with hover effect */}
+        {/* Feature badges — teal icon tints, warm surfaces */}
         <div className="grid grid-cols-3 gap-2.5 mb-6">
           {[
             { icon: Lock, label: 'E2E encrypted' },
@@ -112,16 +112,16 @@ export function AuthScreen() {
           ].map((f) => (
             <div
               key={f.label}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card/40 backdrop-blur-md border border-border/40 hover:border-primary/20 transition-all hover:translate-y-[-2px] duration-200"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card/40 backdrop-blur-md border border-border/40 hover:border-accent-foreground/20 transition-all hover:translate-y-[-2px] duration-200"
             >
-              <f.icon className="h-4.5 w-4.5 text-primary" />
+              <f.icon className="h-4.5 w-4.5 text-accent-foreground" />
               <span className="text-[10px] font-semibold text-muted-foreground text-center tracking-wide">{f.label}</span>
             </div>
           ))}
         </div>
 
         <Card className="border-border/30 bg-card/60 backdrop-blur-xl shadow-lift overflow-hidden border">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-primary via-indigo-500 to-indigo-700" />
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-primary" />
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold text-foreground">Welcome back</CardTitle>
             <CardDescription className="text-muted-foreground/80">
@@ -161,12 +161,12 @@ export function AuthScreen() {
                       required
                     />
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95 text-primary-foreground font-semibold rounded-xl py-5 shadow-md shadow-primary/10 transition-all hover:shadow-lg hover:translate-y-[-1px] active:translate-y-[0px] duration-150">
+                  <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-xl py-5 shadow-md shadow-primary/10 transition-all hover:shadow-lg hover:translate-y-[-1px] active:translate-y-[0px] duration-150">
                     {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Sign in
                   </Button>
                 </form>
-              </TabsContent>
+              </</TabsContent>
 
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-3.5">
@@ -217,7 +217,7 @@ export function AuthScreen() {
                       minLength={6}
                     />
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95 text-primary-foreground font-semibold rounded-xl py-5 shadow-md shadow-primary/10 transition-all hover:shadow-lg hover:translate-y-[-1px] active:translate-y-[0px] duration-150">
+                  <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-xl py-5 shadow-md shadow-primary/10 transition-all hover:shadow-lg hover:translate-y-[-1px] active:translate-y-[0px] duration-150">
                     {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Create account
                   </Button>
@@ -233,7 +233,7 @@ export function AuthScreen() {
                 className="w-full text-xs rounded-xl py-4 border-border/40 hover:bg-muted/50 font-semibold"
                 disabled={loading}
               >
-                <Sparkles className="h-3.5 w-3.5 mr-2 text-indigo-500" />
+                <Sparkles className="h-3.5 w-3.5 mr-2 text-accent-foreground" />
                 Seed demo accounts (alice, bob, carol)
               </Button>
               <p className="text-[11px] text-muted-foreground mt-2.5 text-center leading-relaxed">

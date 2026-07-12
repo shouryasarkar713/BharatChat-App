@@ -276,7 +276,7 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2">
                 {pushEnabled ? (
-                  <Bell className="h-4 w-4 text-primary" />
+                  <Bell className="h-4 w-4 text-accent-foreground" />
                 ) : (
                   <BellOff className="h-4 w-4 text-muted-foreground" />
                 )}
@@ -317,7 +317,7 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-primary hover:bg-primary/90"
+            className="bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold"
           >
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save changes

@@ -56,7 +56,7 @@ export function Avatar({
       )}
       {showStatus && (
         <span
-          className={`absolute bottom-0 right-0 ${dotSize[size]} rounded-full border-2 border-white dark:border-slate-900 ${
+          className={`absolute bottom-0 right-0 ${dotSize[size]} rounded-full border-2 border-[#F7F5F2] dark:border-[#1C1C1E] ${
             online === true
               ? 'bg-emerald-500'
               : online === false

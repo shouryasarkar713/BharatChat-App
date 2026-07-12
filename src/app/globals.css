@@ -44,103 +44,109 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* PulseChat Design System                                            */
+/* BharatChat Design System — "Marigold & Graphite"                   */
 /* ------------------------------------------------------------------ */
-/* A modern, premium look inspired by Linear / Vercel / Telegram:    */
-/*   - Emerald primary accent (matches the brand voice)              */
-/*   - Soft, layered surfaces with subtle gradient overlays          */
-/*   - Refined typography with Inter (loaded by Next.js)             */
-/*   - Smooth animations & micro-interactions                        */
-/*   - Full dark mode parity via next-themes                         */
+/* A warm, craft-inspired palette rooted in Indian visual culture:    */
+/*   - Marigold primary (genda phool — temples, weddings, festivals) */
+/*   - Deep teal accent (patinated copper / aged bronze)             */
+/*   - Warm chalk & graphite surfaces (not cold blue-black)          */
+/*   - Jaali geometric patterns on date separators                   */
+/*   - SVG grain texture for physicality                             */
+/*   - Inter typeface throughout                                      */
 /* ------------------------------------------------------------------ */
 
 :root {
   --radius: 0.75rem;
 
-  /* Light theme — premium warm-tinted slate and soft indigo */
-  --background: oklch(0.99 0.003 260);
-  --foreground: oklch(0.15 0.015 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.015 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.015 260);
-  --primary: oklch(0.48 0.19 281.75);       /* Royal Indigo */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.005 260);
-  --secondary-foreground: oklch(0.22 0.015 260);
-  --muted: oklch(0.96 0.005 260);
-  --muted-foreground: oklch(0.50 0.015 260);
-  --accent: oklch(0.95 0.02 281.75);
-  --accent-foreground: oklch(0.35 0.10 281.75);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.008 260);
-  --input: oklch(0.93 0.008 260);
-  --ring: oklch(0.48 0.19 281.75);
-  --chart-1: oklch(0.48 0.19 281.75);
-  --chart-2: oklch(0.65 0.18 250);
-  --chart-3: oklch(0.76 0.18 64.3);         /* Saffron Accent */
-  --chart-4: oklch(0.65 0.20 305);
-  --chart-5: oklch(0.65 0.20 16);
-  --sidebar: oklch(0.985 0.003 260);
-  --sidebar-foreground: oklch(0.15 0.015 260);
-  --sidebar-primary: oklch(0.48 0.19 281.75);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.95 0.02 281.75);
-  --sidebar-accent-foreground: oklch(0.35 0.10 281.75);
-  --sidebar-border: oklch(0.91 0.008 260);
-  --sidebar-ring: oklch(0.48 0.19 281.75);
+  /* Light theme — Warm Chalk */
+  --background: #F7F5F2;
+  --foreground: #1D1B18;
+  --card: #FEFDFB;
+  --card-foreground: #1D1B18;
+  --popover: #FEFDFB;
+  --popover-foreground: #1D1B18;
+  --primary: #E09115;           /* Marigold */
+  --primary-foreground: #1D1B18; /* Dark text on marigold — 6.84:1 AA */
+  --secondary: #F0EBE3;
+  --secondary-foreground: #3A3631;
+  --muted: #F0EBE3;
+  --muted-foreground: #6E685F;  /* Verified 5.07:1 on chalk — AA */
+  --accent: #E8F0EE;            /* Teal-tinted surface */
+  --accent-foreground: #1A7A6D; /* Deep teal */
+  --destructive: #D94F3B;       /* Vermillion */
+  --destructive-foreground: #FEFDFB;
+  --border: #E4DED5;
+  --input: #EAE5DC;
+  --ring: #E09115;
+  --chart-1: #E09115;           /* Marigold */
+  --chart-2: #1A7A6D;           /* Deep teal */
+  --chart-3: #D4A230;           /* Gold */
+  --chart-4: #D94F3B;           /* Vermillion */
+  --chart-5: #8B6F4E;           /* Warm brown */
+  --sidebar: #F3EDE4;
+  --sidebar-foreground: #1D1B18;
+  --sidebar-primary: #E09115;
+  --sidebar-primary-foreground: #1D1B18;
+  --sidebar-accent: #E8F0EE;
+  --sidebar-accent-foreground: #1A7A6D;
+  --sidebar-border: #E4DED5;
+  --sidebar-ring: #E09115;
 
-  /* Custom brand surfaces */
-  --surface-glass: oklch(1 0 0 / 72%);
-  --surface-elevated: oklch(1 0 0);
-  --shadow-soft: 0 2px 8px oklch(0.15 0.015 260 / 0.03), 0 10px 20px oklch(0.15 0.015 260 / 0.04);
-  --shadow-lift: 0 8px 24px oklch(0.15 0.015 260 / 0.06), 0 20px 48px oklch(0.15 0.015 260 / 0.08);
-  --gradient-mesh: radial-gradient(at 0% 0%, oklch(0.85 0.12 280 / 0.14) 0px, transparent 50%),
-                   radial-gradient(at 100% 100%, oklch(0.80 0.10 320 / 0.08) 0px, transparent 50%);
+  /* Brand surfaces */
+  --surface-glass: rgba(254, 253, 251, 0.72);
+  --surface-elevated: #FEFDFB;
+  --shadow-soft: 0 2px 8px rgba(29, 27, 24, 0.04), 0 10px 20px rgba(29, 27, 24, 0.06);
+  --shadow-lift: 0 8px 24px rgba(29, 27, 24, 0.07), 0 20px 48px rgba(29, 27, 24, 0.09);
+  --gradient-mesh: radial-gradient(at 0% 0%, rgba(224, 145, 21, 0.08) 0px, transparent 50%),
+                   radial-gradient(at 100% 100%, rgba(26, 122, 109, 0.06) 0px, transparent 50%);
+
+  /* Jaali pattern — 8-pointed star geometric lattice (encoded SVG) */
+  --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%236E685F' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 .dark {
-  /* Dark theme — premium midnight indigo-slate */
-  --background: oklch(0.13 0.015 275);
-  --foreground: oklch(0.98 0.003 260);
-  --card: oklch(0.16 0.015 275);
-  --card-foreground: oklch(0.98 0.003 260);
-  --popover: oklch(0.16 0.015 275);
-  --popover-foreground: oklch(0.98 0.003 260);
-  --primary: oklch(0.60 0.17 281.75);       /* Indigo in dark */
-  --primary-foreground: oklch(0.13 0.015 275);
-  --secondary: oklch(0.20 0.015 275);
-  --secondary-foreground: oklch(0.98 0.003 260);
-  --muted: oklch(0.20 0.015 275);
-  --muted-foreground: oklch(0.65 0.01 270);
-  --accent: oklch(0.25 0.05 281.75);
-  --accent-foreground: oklch(0.90 0.06 281.75);
-  --destructive: oklch(0.62 0.20 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(1 0 0 / 7%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.60 0.17 281.75);
-  --chart-1: oklch(0.60 0.17 281.75);
-  --chart-2: oklch(0.70 0.18 250);
-  --chart-3: oklch(0.78 0.18 64.3);         /* Saffron in dark */
-  --chart-4: oklch(0.70 0.20 305);
-  --chart-5: oklch(0.70 0.20 16);
-  --sidebar: oklch(0.145 0.015 275);
-  --sidebar-foreground: oklch(0.98 0.003 260);
-  --sidebar-primary: oklch(0.60 0.17 281.75);
-  --sidebar-primary-foreground: oklch(0.13 0.015 275);
-  --sidebar-accent: oklch(0.25 0.05 281.75);
-  --sidebar-accent-foreground: oklch(0.90 0.06 281.75);
-  --sidebar-border: oklch(1 0 0 / 7%);
-  --sidebar-ring: oklch(0.60 0.17 281.75);
+  /* Dark theme — Graphite */
+  --background: #1C1C1E;
+  --foreground: #ECECEA;
+  --card: #2A2A2C;
+  --card-foreground: #ECECEA;
+  --popover: #2A2A2C;
+  --popover-foreground: #ECECEA;
+  --primary: #F0A623;           /* Bright marigold for dark */
+  --primary-foreground: #1C1C1E; /* Dark text on marigold — 8.38:1 AAA */
+  --secondary: #333331;
+  --secondary-foreground: #ECECEA;
+  --muted: #333331;
+  --muted-foreground: #9B958D;
+  --accent: #1E3330;            /* Dark teal-tinted surface */
+  --accent-foreground: #5BBFB0; /* Bright teal for dark */
+  --destructive: #E06050;
+  --destructive-foreground: #ECECEA;
+  --border: rgba(236, 236, 234, 0.08);
+  --input: rgba(236, 236, 234, 0.10);
+  --ring: #F0A623;
+  --chart-1: #F0A623;
+  --chart-2: #5BBFB0;
+  --chart-3: #E8B84A;
+  --chart-4: #E06050;
+  --chart-5: #B89A72;
+  --sidebar: #232323;
+  --sidebar-foreground: #ECECEA;
+  --sidebar-primary: #F0A623;
+  --sidebar-primary-foreground: #1C1C1E;
+  --sidebar-accent: #1E3330;
+  --sidebar-accent-foreground: #5BBFB0;
+  --sidebar-border: rgba(236, 236, 234, 0.08);
+  --sidebar-ring: #F0A623;
 
-  --surface-glass: oklch(0.16 0.015 275 / 75%);
-  --surface-elevated: oklch(0.19 0.015 275);
-  --shadow-soft: 0 4px 12px oklch(0 0 0 / 0.25), 0 12px 24px oklch(0 0 0 / 0.35);
-  --shadow-lift: 0 8px 32px oklch(0 0 0 / 0.35), 0 24px 64px oklch(0 0 0 / 0.45);
-  --gradient-mesh: radial-gradient(at 0% 0%, oklch(0.40 0.15 280 / 0.14) 0px, transparent 50%),
-                   radial-gradient(at 100% 100%, oklch(0.35 0.12 320 / 0.10) 0px, transparent 50%);
+  --surface-glass: rgba(42, 42, 44, 0.75);
+  --surface-elevated: #2A2A2C;
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.30), 0 12px 24px rgba(0, 0, 0, 0.40);
+  --shadow-lift: 0 8px 32px rgba(0, 0, 0, 0.40), 0 24px 64px rgba(0, 0, 0, 0.50);
+  --gradient-mesh: radial-gradient(at 0% 0%, rgba(240, 166, 35, 0.08) 0px, transparent 50%),
+                   radial-gradient(at 100% 100%, rgba(91, 191, 176, 0.06) 0px, transparent 50%);
+
+  --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%239B958D' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -154,7 +160,24 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Refined scrollbars */
+  /* SVG grain texture overlay — adds physicality to flat surfaces */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1; /* Below everything interactive, above background */
+    opacity: 0.028;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 300px 300px;
+  }
+  .dark body::before {
+    opacity: 0.04;
+    mix-blend-mode: soft-light;
+  }
+
+  /* Refined scrollbars — warm stone tints */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -163,21 +186,21 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: oklch(0.55 0.01 250 / 0.25);
+    background: rgba(110, 104, 95, 0.25);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.55 0.01 250 / 0.45);
+    background: rgba(110, 104, 95, 0.45);
     background-clip: padding-box;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: oklch(0.70 0.01 250 / 0.20);
+    background: rgba(155, 149, 141, 0.20);
     background-clip: padding-box;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.70 0.01 250 / 0.35);
+    background: rgba(155, 149, 141, 0.35);
     background-clip: padding-box;
   }
 }
@@ -207,13 +230,45 @@
     background-attachment: fixed;
   }
 
-  /* Gradient text — solid color fallback for maximum cross-browser reliability */
+  /* Gradient text — solid primary color */
   .text-gradient {
     color: var(--primary);
   }
   .dark .text-gradient {
     color: var(--primary);
   }
+
+  /* ---------------------------------------------------------------- */
+  /* Jaali (जाली) — Geometric lattice pattern                        */
+  /* Used on date separators, empty state watermark, auth accents     */
+  /* ---------------------------------------------------------------- */
+
+  /* Thin jaali line — for date separator flanking lines */
+  .jaali-line {
+    background-image: var(--jaali-pattern);
+    background-size: 12px 12px;
+    height: 12px;
+    opacity: 0.6;
+  }
+
+  /* Large jaali watermark — for empty state background */
+  .jaali-watermark {
+    background-image: var(--jaali-pattern);
+    background-size: 32px 32px;
+    opacity: 0.04;
+  }
+
+  /* Jaali decorative circle — for auth screen */
+  .jaali-circle {
+    background-image: var(--jaali-pattern);
+    background-size: 20px 20px;
+    opacity: 0.08;
+    border-radius: 9999px;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Animations                                                        */
+  /* ---------------------------------------------------------------- */
 
   /* Subtle animation for new messages */
   @keyframes message-in {
@@ -225,9 +280,9 @@
   }
 
   @keyframes pulse-ring {
-    0% { box-shadow: 0 0 0 0 oklch(0.65 0.22 25 / 0.5); }
-    70% { box-shadow: 0 0 0 12px oklch(0.65 0.22 25 / 0); }
-    100% { box-shadow: 0 0 0 0 oklch(0.65 0.22 25 / 0); }
+    0% { box-shadow: 0 0 0 0 rgba(224, 145, 21, 0.5); }
+    70% { box-shadow: 0 0 0 12px rgba(224, 145, 21, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(224, 145, 21, 0); }
   }
   .animate-pulse-ring {
     animation: pulse-ring 1.5s infinite;

@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   keywords: ["chat", "real-time", "websocket", "socket.io", "e2e encryption", "Next.js"],
   manifest: "/manifest.webmanifest",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#10b981" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: light)", color: "#E09115" },
+    { media: "(prefers-color-scheme: dark)", color: "#1C1C1E" },
   ],
 };
 
