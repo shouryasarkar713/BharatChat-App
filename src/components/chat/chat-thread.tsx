@@ -363,6 +363,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
 
   return (
     <main className="flex-1 flex flex-col h-full bg-background/40 bg-mesh min-w-0 relative">
+      <div className="absolute inset-0 jaali-watermark pointer-events-none" aria-hidden="true" />
       {/* Header */}
       <header className="flex items-center gap-3 p-3.5 border-b border-border/40 bg-card/85 backdrop-blur-md relative z-20">
         {onBack && (
