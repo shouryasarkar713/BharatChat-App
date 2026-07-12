@@ -230,19 +230,26 @@
   .jaali-underline-wordmark {
     position: relative;
     display: inline-block;
-    padding-bottom: 0.22em; /* Spacing below the wordmark text */
+    padding: 0.05em 0.5em 0.28em 0.5em; /* Horizontal padding for background clearing */
+  }
+  /* Context-aware radial gradient clearing behind wordmark text */
+  .bg-mesh .jaali-underline-wordmark {
+    background: radial-gradient(ellipse at center, var(--background) 55%, transparent 100%);
+  }
+  aside .jaali-underline-wordmark {
+    background: radial-gradient(ellipse at center, var(--sidebar) 55%, transparent 100%);
   }
   .jaali-underline-wordmark::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 0.12em; /* Proportionate height of the underline strip */
+    bottom: 0.06em;
+    left: 0.5em; /* Align exactly with text boundaries inside horizontal padding */
+    right: 0.5em;
+    height: 0.15em; /* Scale-proportionate height of the underline strip */
     background-image: var(--jaali-pattern-marigold);
-    background-size: 0.12em 0.12em; /* Uniform repeating square aspect ratio */
+    background-size: 0.15em 0.15em; /* Uniform repeating square aspect ratio */
     background-repeat: repeat-x;
-    opacity: 0.35; /* Subtle considered detail (30-40% range) */
+    opacity: 0.70; /* Clear visual presence (60-70% range) */
     pointer-events: none;
   }
 
