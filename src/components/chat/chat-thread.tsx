@@ -484,22 +484,24 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
               onDeleteMessage={handleDeleteMessage}
             />
           )}
-          {typingNames.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" />
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '150ms' }} />
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '300ms' }} />
-              </span>
-              <span>
-                {typingNames.length === 1
-                  ? `${typingNames[0]} is typing...`
-                  : `${typingNames.slice(0, 2).join(', ')} are typing...`}
-              </span>
-            </div>
-          )}
         </div>
       </ScrollArea>
+
+      {/* Typing Indicator */}
+      {typingNames.length > 0 && (
+        <div className="px-6 py-1.5 text-xs text-muted-foreground flex items-center gap-2 animate-fade-in z-10">
+          <span className="flex gap-1">
+            <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" />
+            <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '150ms' }} />
+            <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '300ms' }} />
+          </span>
+          <span className="font-medium">
+            {typingNames.length === 1
+              ? `${typingNames[0]} is typing...`
+              : `${typingNames.slice(0, 2).join(', ')} are typing...`}
+          </span>
+        </div>
+      )}
 
       {/* Composer */}
       <footer className="p-4 bg-transparent z-10">
