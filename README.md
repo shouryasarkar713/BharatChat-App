@@ -91,7 +91,7 @@ Follow these steps to configure and run BharatChat locally on your laptop:
 
 1. Create a `.env` file in the root of the project:
    ```env
-   # Database Connection (PostgreSQL or SQLite)
+   # Database Connection (PostgreSQL)
    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bharatchat"
 
    # NextAuth Settings
@@ -102,7 +102,7 @@ Follow these steps to configure and run BharatChat locally on your laptop:
 
 2. (Optional) If you want to run RabbitMQ for queue persistence, set `RABBITMQ_URL` in the environment:
    ```env
-   RABBITMQ_URL="amqp://guest:guest@guest@localhost:5672"
+   RABBITMQ_URL="amqp://guest:guest@localhost:5672"
    ```
    *If `RABBITMQ_URL` is omitted, the chat service automatically falls back to a robust in-memory queue.*
 
