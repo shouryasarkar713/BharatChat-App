@@ -100,8 +100,12 @@ export function AuthScreen() {
           <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 mb-4 transform hover:scale-105 transition-transform duration-200">
             <MessageSquare className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-foreground pb-1">
-            <span className="jaali-underline-wordmark">BharatChat</span>
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground pb-1 flex items-center justify-center select-none">
+            <span>Bharat</span>
+            <svg className="h-[0.42em] w-[0.42em] text-primary fill-primary mx-[0.15em] self-center inline-block" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span className="text-primary">Chat</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5 font-medium tracking-wide">Real-time end-to-end encrypted chat</p>
         </div>

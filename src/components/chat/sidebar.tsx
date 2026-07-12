@@ -50,8 +50,12 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
               <MessageSquare className="h-5.5 w-5.5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-extrabold leading-tight tracking-wide text-md text-foreground">
-                <span className="jaali-underline-wordmark">BharatChat</span>
+              <h1 className="font-extrabold leading-tight tracking-wide text-md flex items-center select-none">
+                <span className="text-foreground">Bharat</span>
+                <svg className="h-[0.42em] w-[0.42em] text-primary fill-primary mx-[0.15em] self-center inline-block" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span className="text-primary">Chat</span>
               </h1>
               <div className="flex items-center gap-1.5 text-[10px] font-semibold mt-0.5">
                 {socketConnected ? (
