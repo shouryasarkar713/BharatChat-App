@@ -90,9 +90,10 @@ export function AuthScreen() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background bg-mesh p-4 relative overflow-hidden">
-      {/* Decorative jaali pattern circles — replace generic gradient orbs */}
-      <div className="absolute top-1/4 left-1/4 h-96 w-96 jaali-circle pointer-events-none" aria-hidden="true" />
-      <div className="absolute bottom-1/4 right-1/4 h-80 w-80 jaali-circle pointer-events-none" aria-hidden="true" />
+      {/* Background jaali watermark & decorative jaali circles */}
+      <div className="absolute inset-0 jaali-watermark pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-12 left-12 h-64 w-64 jaali-circle pointer-events-none" aria-hidden="true" />
+      <div className="absolute bottom-12 right-12 h-48 w-48 jaali-circle pointer-events-none" aria-hidden="true" />
 
       <div className="w-full max-w-md relative z-10">
         <div className="flex flex-col items-center mb-8">
@@ -101,23 +102,6 @@ export function AuthScreen() {
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-foreground pb-1">BharatChat</h1>
           <p className="text-sm text-muted-foreground mt-1.5 font-medium tracking-wide">Real-time end-to-end encrypted chat</p>
-        </div>
-
-        {/* Feature badges — teal icon tints, warm surfaces */}
-        <div className="grid grid-cols-3 gap-2.5 mb-6">
-          {[
-            { icon: Lock, label: 'E2E encrypted' },
-            { icon: Zap, label: 'Real-time' },
-            { icon: Shield, label: 'Moderated' },
-          ].map((f) => (
-            <div
-              key={f.label}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card/40 backdrop-blur-md border border-border/40 hover:border-accent-foreground/20 transition-all hover:translate-y-[-2px] duration-200"
-            >
-              <f.icon className="h-4.5 w-4.5 text-accent-foreground" />
-              <span className="text-[10px] font-semibold text-muted-foreground text-center tracking-wide">{f.label}</span>
-            </div>
-          ))}
         </div>
 
         <Card className="border-border/30 bg-card/60 backdrop-blur-xl shadow-lift overflow-hidden border">
@@ -244,5 +228,5 @@ export function AuthScreen() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

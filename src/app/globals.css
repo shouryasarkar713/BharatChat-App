@@ -100,8 +100,8 @@
   --gradient-mesh: radial-gradient(at 0% 0%, rgba(224, 145, 21, 0.08) 0px, transparent 50%),
                    radial-gradient(at 100% 100%, rgba(26, 122, 109, 0.06) 0px, transparent 50%);
 
-  /* Jaali pattern — 8-pointed star geometric lattice (encoded SVG) */
-  --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%236E685F' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+  /* Jaali pattern — 8-pointed star geometric lattice (encoded SVG) - fully opaque path, controlled via CSS opacity */
+  --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%236E685F' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -146,7 +146,8 @@
   --gradient-mesh: radial-gradient(at 0% 0%, rgba(240, 166, 35, 0.08) 0px, transparent 50%),
                    radial-gradient(at 100% 100%, rgba(91, 191, 176, 0.06) 0px, transparent 50%);
 
-  --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%239B958D' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+  /* Jaali pattern — 8-pointed star geometric lattice (encoded SVG) - fully opaque path, controlled via CSS opacity */
+  --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%239B958D' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -158,23 +159,6 @@
     font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* SVG grain texture overlay — adds physicality to flat surfaces */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1; /* Below everything interactive, above background */
-    opacity: 0.028;
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-    background-size: 300px 300px;
-  }
-  .dark body::before {
-    opacity: 0.04;
-    mix-blend-mode: soft-light;
   }
 
   /* Refined scrollbars — warm stone tints */
@@ -239,6 +223,14 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Grain Texture Utility                                            */
+  /* ---------------------------------------------------------------- */
+  .bg-grain-texture {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 300px 300px;
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Jaali (जाली) — Geometric lattice pattern                        */
   /* Used on date separators, empty state watermark, auth accents     */
   /* ---------------------------------------------------------------- */
@@ -247,23 +239,32 @@
   .jaali-line {
     background-image: var(--jaali-pattern);
     background-size: 12px 12px;
+    background-repeat: repeat-x;
     height: 12px;
-    opacity: 0.6;
+    opacity: 0.18;
   }
 
   /* Large jaali watermark — for empty state background */
   .jaali-watermark {
     background-image: var(--jaali-pattern);
     background-size: 32px 32px;
-    opacity: 0.04;
+    background-repeat: repeat;
+    opacity: 0.05;
   }
 
   /* Jaali decorative circle — for auth screen */
   .jaali-circle {
     background-image: var(--jaali-pattern);
     background-size: 20px 20px;
-    opacity: 0.08;
+    background-repeat: repeat;
+    opacity: 0.15;
     border-radius: 9999px;
+    border: 1px solid rgba(224, 145, 21, 0.15);
+    background-color: rgba(254, 253, 251, 0.2);
+  }
+  .dark .jaali-circle {
+    border: 1px solid rgba(240, 166, 35, 0.15);
+    background-color: rgba(42, 42, 44, 0.2);
   }
 
   /* ---------------------------------------------------------------- */
