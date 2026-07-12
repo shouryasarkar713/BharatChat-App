@@ -466,8 +466,8 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
             <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
               <span className="flex gap-1">
                 <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" />
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '150ms' }} style={{ animationDelay: '150ms' }} />
-                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '300ms' }} style={{ animationDelay: '300ms' }} />
+                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '150ms' }} />
+                <span className="h-1.5 w-1.5 bg-muted-foreground/60 rounded-full typing-dot" style={{ animationDelay: '300ms' }} />
               </span>
               <span>
                 {typingNames.length === 1
