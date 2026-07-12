@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
-import os from 'os'
 import { v4 as uuidv4 } from 'uuid'
-
-const UPLOAD_DIR = process.env.VERCEL || process.env.NODE_ENV === 'production'
-  ? path.join(os.tmpdir(), 'uploads')
-  : path.join(process.cwd(), 'uploads')
+import { db } from '@/lib/db'
 
 function getContentType(mimeType: string, filename: string): string {
   const lowerName = filename.toLowerCase()
@@ -14,6 +8,24 @@ function getContentType(mimeType: string, filename: string): string {
   if (mimeType.startsWith('video/')) return 'VIDEO'
   if (mimeType.startsWith('audio/') || lowerName.endsWith('.webm') || lowerName.endsWith('.wav') || lowerName.endsWith('.mp3') || lowerName.endsWith('.ogg')) return 'AUDIO'
   return 'FILE'
+}
+
+async function ensureUploadTableExists() {
+  try {
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Upload" (
+        "id" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "mimeType" TEXT NOT NULL,
+        "size" INTEGER NOT NULL,
+        "data" BYTEA NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Upload_pkey" PRIMARY KEY ("id")
+      );
+    `);
+  } catch (err) {
+    console.error('Failed to create Upload table:', err)
+  }
 }
 
 export async function POST(req: Request) {
@@ -27,21 +39,29 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Ensure upload directory exists
-    await mkdir(UPLOAD_DIR, { recursive: true })
+    // Ensure the table exists in database
+    await ensureUploadTableExists()
 
-    const ext = path.extname(file.name) || '.bin'
-    // Generate unique file name
-    const uniqueName = `${uuidv4()}${ext}`
-    const filePath = path.join(UPLOAD_DIR, uniqueName)
+    const ext = file.name ? (file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : '.bin') : '.bin'
+    const uniqueId = uuidv4()
+    const uniqueName = `${uniqueId}${ext}`
 
-    await writeFile(filePath, buffer)
+    // Save file data to database
+    await db.upload.create({
+      data: {
+        id: uniqueName,
+        name: file.name || 'file',
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        data: buffer
+      }
+    })
 
-    const contentType = getContentType(file.type, file.name)
+    const contentType = getContentType(file.type || 'application/octet-stream', file.name || '')
 
     return NextResponse.json({
       url: `/api/uploads/${uniqueName}`,
-      name: file.name,
+      name: file.name || 'file',
       size: file.size,
       mimeType: file.type || 'application/octet-stream',
       contentType: contentType

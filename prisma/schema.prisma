@@ -110,3 +110,12 @@ model Report {
 
   @@index([messageId])
 }
+
+model Upload {
+  id        String   @id
+  name      String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+}

@@ -66,10 +66,14 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
       }
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
         setAudioBlob(blob)
         setAudioUrl(URL.createObjectURL(blob))
+        const exact = await getAudioDuration(blob)
+        if (exact > 0) {
+          setDuration(Math.round(exact))
+        }
       }
 
       recorder.start()
@@ -94,7 +98,7 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
     }
   }
 
-  async function stopRecording() {
+  function stopRecording() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
@@ -247,4 +251,19 @@ function formatDuration(s: number): string {
   const m = Math.floor(s / 60)
   const sec = s % 60
   return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+async function getAudioDuration(blob: Blob): Promise<number> {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return 0
+    const audioCtx = new AudioContextClass()
+    const arrayBuffer = await blob.arrayBuffer()
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+    audioCtx.close()
+    return audioBuffer.duration
+  } catch (e) {
+    console.error('Failed to decode audio duration via AudioContext:', e)
+    return 0
+  }
 }

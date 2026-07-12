@@ -1,11 +1,5 @@
-import { readFile, stat } from 'fs/promises'
-import path from 'path'
-import os from 'os'
 import { NextResponse } from 'next/server'
-
-const UPLOAD_DIR = process.env.VERCEL || process.env.NODE_ENV === 'production'
-  ? path.join(os.tmpdir(), 'uploads')
-  : path.join(process.cwd(), 'uploads')
+import { db } from '@/lib/db'
 
 const MIME_EXT: Record<string, string> = {
   '.png': 'image/png',
@@ -19,7 +13,7 @@ const MIME_EXT: Record<string, string> = {
   '.json': 'application/json',
   '.zip': 'application/zip',
   '.mp4': 'video/mp4',
-  '.webm': 'audio/webm', // voice messages from MediaRecorder are audio/webm
+  '.webm': 'audio/webm',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
@@ -28,27 +22,51 @@ const MIME_EXT: Record<string, string> = {
   '.flac': 'audio/flac',
 }
 
+async function ensureUploadTableExists() {
+  try {
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Upload" (
+        "id" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "mimeType" TEXT NOT NULL,
+        "size" INTEGER NOT NULL,
+        "data" BYTEA NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Upload_pkey" PRIMARY KEY ("id")
+      );
+    `);
+  } catch (err) {
+    console.error('Failed to create Upload table:', err)
+  }
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ file: string }> }
 ) {
   const { file } = await params
-  // Sanitize: only allow simple filenames (UUID + extension)
   if (!/^[a-zA-Z0-9-]+\.[a-zA-Z0-9]+$/.test(file)) {
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
   }
-  const filePath = path.join(UPLOAD_DIR, file)
+
+  await ensureUploadTableExists()
+
   try {
-    const data = await readFile(filePath)
-    const ext = path.extname(file).toLowerCase()
-    const mime = MIME_EXT[ext] || 'application/octet-stream'
-    return new NextResponse(data as any, {
+    const upload = await db.upload.findUnique({
+      where: { id: file }
+    })
+    if (!upload) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    }
+
+    return new NextResponse(upload.data, {
       headers: {
-        'Content-Type': mime,
+        'Content-Type': upload.mimeType,
         'Cache-Control': 'private, max-age=3600',
       },
     })
-  } catch {
-    return NextResponse.json({ error: 'File not found' }, { status: 404 })
+  } catch (error) {
+    console.error('File retrieve error:', error)
+    return NextResponse.json({ error: 'File retrieve failed' }, { status: 500 })
   }
 }
