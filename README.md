@@ -6,21 +6,29 @@ BharatChat is a premium, modern, and highly secure real-time messaging web appli
 
 ## 🎨 Key Features
 
-1. **End-to-End Encryption (E2E)**
+1. **End-to-End Encryption (E2E) & Dynamic Content Moderation**
    * Messages are encrypted client-side using **AES-GCM (256-bit)** and keys are exchanged securely using **RSA-OAEP (2048-bit)** via the browser's Web Crypto API.
    * Cryptographic keys are cached locally in **IndexedDB**. The server only stores encrypted ciphertexts and never has access to raw message contents.
-2. **Sub-second Real-time Messaging**
+   * **Profanity Filter Customization (Option D)**: Users can toggle a "Show Profanity" option in their Profile settings. E2E messages are transmitted uncensored; the recipient client dynamically applies content moderation (`moderateMessage`) at render-time depending on their preference.
+
+2. **Sub-second Real-time Messaging & Presence Sync**
    * Handled by a dedicated **Socket.IO** microservice.
    * Real-time read receipts, dynamic typing indicators, and online/away/offline presence beacons with heartbeat monitoring.
-3. **Queue-Backed DB Persistence**
+   * **Smart Presence Syncing**: On socket connection (`user:join`), the server queries and synchronizes the active presence status of all members in the user's conversations, resolving partial/one-sided offline status bugs.
+
+3. **Queue-Backed DB Persistence & Binary Upload Storage**
    * The Socket.IO server uses a message queue (backed by **RabbitMQ** with an in-memory fallback) to ensure that incoming messages are written to the database reliably.
    * Failed persistence jobs are automatically retried up to 3 times with exponential backoff before being routed to a Dead-Letter Queue (DLQ).
-4. **Rich Multimedia Sharing**
+   * **Stateless Binary Storage**: Files, images, and voice notes are stored as binary buffers (`bytea` / `Bytes` type) directly inside the database, ensuring stateless host compatibility (like Vercel) instead of relying on ephemeral local disk `/tmp` containers.
+
+4. **Rich Multimedia Sharing & High-Accuracy Audio**
    * Upload and share pictures, videos, files, and voice notes.
-   * Includes built-in image previewing, video streaming, file download links, and an in-app audio recorder and player.
-5. **Modern, Responsive UI**
+   * **High-Accuracy Audio Recording**: Decodes recorded WebM audio blobs using `AudioContext` on the client to compute precise track duration in seconds, bypassing browser metadata limitations.
+
+5. **Modern, Responsive UI & Deep Linking**
    * Built with **Next.js**, **Tailwind CSS**, and **shadcn/ui** components.
-   * Features a premium Indigo and Warm Saffron color theme, glassmorphic layout panels, asymmetric message bubbles, and smooth framer-motion micro-animations.
+   * **Deep Link Navigation**: Searching for messages automatically handles chat room transitions, smooth scroll centering, and highlights target messages with a glowing animation.
+   * **Premium Typography**: Custom two-tone wordmark ("Bharat" in graphite/ink, "Chat" in marigold) separated by a styled mini speech-bubble logo icon in both the sidebar and auth panels.
 
 ---
 
@@ -43,7 +51,7 @@ BharatChat is a premium, modern, and highly secure real-time messaging web appli
                     Memory Queue       │ (Prisma ORM)
                                        ▼
                       ┌─────────────────────────────────┐
-                      │         SQLite / DB             │
+                      │         PostgreSQL / DB         │
                       └─────────────────────────────────┘
 ```
 
@@ -83,8 +91,8 @@ Follow these steps to configure and run BharatChat locally on your laptop:
 
 1. Create a `.env` file in the root of the project:
    ```env
-   # Database Connection (SQLite by default)
-   DATABASE_URL="file:./db/custom.db"
+   # Database Connection (PostgreSQL or SQLite)
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bharatchat"
 
    # NextAuth Settings
    NEXTAUTH_URL="http://localhost:3000"
@@ -94,7 +102,7 @@ Follow these steps to configure and run BharatChat locally on your laptop:
 
 2. (Optional) If you want to run RabbitMQ for queue persistence, set `RABBITMQ_URL` in the environment:
    ```env
-   RABBITMQ_URL="amqp://guest:guest@localhost:5672"
+   RABBITMQ_URL="amqp://guest:guest@guest@localhost:5672"
    ```
    *If `RABBITMQ_URL` is omitted, the chat service automatically falls back to a robust in-memory queue.*
 
@@ -102,7 +110,7 @@ Follow these steps to configure and run BharatChat locally on your laptop:
 
 ### Step 3: Setup the Database
 
-1. Apply the database migrations to initialize SQLite:
+1. Apply the database migrations to initialize the schema:
    ```bash
    npx prisma db push
    ```
