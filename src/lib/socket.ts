@@ -17,8 +17,8 @@ export async function getSocket(userId: string): Promise<Socket> {
   }
   connectingUserId = userId
 
-  let socketUrl: string | undefined = undefined
-  if (typeof window !== 'undefined' && window.location.port === '3000') {
+  let socketUrl: string | undefined = process.env.NEXT_PUBLIC_SOCKET_URL
+  if (!socketUrl && typeof window !== 'undefined' && window.location.port === '3000') {
     socketUrl = 'http://127.0.0.1:3003'
   }
   socket = io(socketUrl, {
