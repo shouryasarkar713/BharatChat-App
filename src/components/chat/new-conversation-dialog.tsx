@@ -27,9 +27,9 @@ export function NewConversationDialog({
   onOpenChange,
   currentUserId,
 }: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  currentUserId: string
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentUserId: string;
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserResult[]>([])
@@ -158,7 +158,6 @@ export function NewConversationDialog({
           )}
 
           <div className="relative">
-            <Check className="hidden" /> {/* Keep search icon context clean */}
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-8"
@@ -173,12 +172,12 @@ export function NewConversationDialog({
               {selected.map((u) => (
                 <span
                   key={u.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/15 text-primary text-xs rounded-full"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent text-accent-foreground text-xs rounded-full border border-accent-foreground/10"
                 >
                   {u.name}
                   <button
                     onClick={() => toggleSelect(u)}
-                    className="hover:text-primary/80"
+                    className="hover:text-accent-foreground/80"
                   >
                     ×
                   </button>
@@ -202,7 +201,7 @@ export function NewConversationDialog({
                       onClick={() => toggleSelect(u)}
                       className={cn(
                         'w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted/60 transition-colors',
-                        isSelected && 'bg-primary/10'
+                        isSelected && 'bg-accent/40'
                       )}
                     >
                       <Avatar name={u.name} color={u.avatarColor} size="sm" src={u.avatarUrl} />
@@ -210,7 +209,7 @@ export function NewConversationDialog({
                         <p className="text-sm font-medium text-foreground truncate">{u.name}</p>
                         <p className="text-xs text-muted-foreground truncate">@{u.username}</p>
                       </div>
-                      {isSelected && <Check className="h-4 w-4 text-primary" />}
+                      {isSelected && <Check className="h-4 w-4 text-accent-foreground" />}
                     </button>
                   )
                 })
@@ -219,7 +218,7 @@ export function NewConversationDialog({
           </ScrollArea>
 
           <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-            <Lock className="h-3.5 w-3.5 text-primary" />
+            <Lock className="h-3.5 w-3.5 text-accent-foreground" />
             <span>End-to-end encryption is enabled by default for new chats.</span>
           </div>
         </div>
@@ -229,7 +228,7 @@ export function NewConversationDialog({
           <Button
             onClick={handleCreate}
             disabled={creating || selected.length === 0 || (isGroup && !groupName.trim())}
-            className="bg-primary hover:bg-primary/90"
+            className="bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold"
           >
             {creating ? 'Creating...' : isGroup ? 'Create group' : 'Start chat'}
           </Button>
