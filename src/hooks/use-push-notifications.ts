@@ -76,7 +76,7 @@ export function usePushNotifications(): PushNotificationState {
         return
       }
       try {
-        const opts: NotificationOptions = {
+        const opts: any = {
           body,
           icon: '/icon-192.png',
           badge: '/icon-192.png',
