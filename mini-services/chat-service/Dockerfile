@@ -9,7 +9,7 @@ COPY prisma ./prisma
 RUN npm install
 
 # Copy chat-service package configs
-COPY mini-services/chat-service/package*.json ./mini-services/chat-service/
+COPY mini-services/chat-service/package.json ./mini-services/chat-service/
 
 # Install chat-service dependencies
 WORKDIR /app/mini-services/chat-service
