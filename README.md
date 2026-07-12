@@ -1,5 +1,7 @@
 # BharatChat: A Real-Time Messaging Application
 
+> 🚀 **Live Demo:** [bharat-chat-app-vqn8.vercel.app](https://bharat-chat-app-vqn8.vercel.app/)
+
 BharatChat is a premium, modern, and highly secure real-time messaging web application. It features client-side end-to-end encryption (E2E), real-time presence indicators, typing indicators, read receipts, and support for multimedia file attachments.
 
 ---
