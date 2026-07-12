@@ -166,7 +166,7 @@ export function AuthScreen() {
                     Sign in
                   </Button>
                 </form>
-              </</TabsContent>
+              </TabsContent>
 
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-3.5">
