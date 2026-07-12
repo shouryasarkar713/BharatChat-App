@@ -102,6 +102,7 @@
 
   /* Jaali pattern — 8-pointed star geometric lattice (encoded SVG) - fully opaque path, controlled via CSS opacity */
   --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%236E685F' fill-rule='evenodd'/%3E%3C/svg%3E");
+  --jaali-pattern-marigold: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%23E09115' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -148,6 +149,7 @@
 
   /* Jaali pattern — 8-pointed star geometric lattice (encoded SVG) - fully opaque path, controlled via CSS opacity */
   --jaali-pattern: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%239B958D' fill-rule='evenodd'/%3E%3C/svg%3E");
+  --jaali-pattern-marigold: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0L14.5 4.5L19.1 2.3L17.5 7L22 8.5L18 11.5L22 14.5L17.5 16L19.1 20.7L14.5 18.5L12 23L9.5 18.5L4.9 20.7L6.5 16L2 14.5L6 11.5L2 8.5L6.5 7L4.9 2.3L9.5 4.5Z' fill='%23F0A623' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -223,31 +225,24 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* Typographic nod: Shirorekha (शिरोरेखा) segment style             */
+  /* Typographic nod: Jaali-inspired dotted underline wordmark       */
   /* ---------------------------------------------------------------- */
-  .shirorekha-segment {
+  .jaali-underline-wordmark {
     position: relative;
     display: inline-block;
-    padding-top: 0.15em;
+    padding-bottom: 0.22em; /* Spacing below the wordmark text */
   }
-  .shirorekha-segment::after {
+  .jaali-underline-wordmark::after {
     content: '';
     position: absolute;
-    top: 0.25em; /* Positioned exactly touching the top edges of capital letters */
+    bottom: 0;
     left: 0;
     right: 0;
-    height: 0.07em; /* Scale-proportionate bar thickness */
-    background-color: var(--primary);
-    pointer-events: none;
-  }
-  .shirorekha-segment::before {
-    content: '';
-    position: absolute;
-    top: 0.25em;
-    left: 0;
-    width: 0.07em; /* Same thickness as the bar */
-    height: 0.22em; /* Proportionate vertical hanging line length */
-    background-color: var(--primary);
+    height: 0.12em; /* Proportionate height of the underline strip */
+    background-image: var(--jaali-pattern-marigold);
+    background-size: 0.12em 0.12em; /* Uniform repeating square aspect ratio */
+    background-repeat: repeat-x;
+    opacity: 0.35; /* Subtle considered detail (30-40% range) */
     pointer-events: none;
   }
 
