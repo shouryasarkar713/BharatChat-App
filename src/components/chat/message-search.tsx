@@ -186,7 +186,7 @@ async function performSearch(
     }
 
     // For E2E messages, we need to decrypt them to search. Get the AES key for this conversation.
-    let aesKey: CryptoKey | null = null
+    let aesKey: CryptoKey | undefined = undefined
     const hasEncrypted = msgs.some((m: any) => m.encrypted && m.contentType === 'TEXT')
     if (hasEncrypted) {
       try {
