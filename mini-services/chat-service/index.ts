@@ -11,7 +11,7 @@
 //      enable multiple chat-service instances to share load
 //
 // Authentication: the client passes `userId` + `sessionToken` in the handshake
-// auth payload. Currently we accept any userId that exists in the DB. In
+// auth payload. For the demo we accept any userId that exists in the DB. In
 // production you would validate the NextAuth JWT here.
 
 import { createServer } from 'http'
@@ -203,6 +203,31 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         userId,
         status: 'online',
         lastActiveAt: entry.lastActiveAt,
+      })
+    }
+
+    // Send the current presence status of other members to the joining user
+    if (memberships.length > 0) {
+      db.conversationMember.findMany({
+        where: {
+          conversationId: { in: memberships.map((m) => m.conversationId) },
+          userId: { not: userId },
+        },
+        select: { userId: true },
+      }).then((otherMemberships) => {
+        const otherUserIds = Array.from(new Set(otherMemberships.map((om) => om.userId)))
+        for (const otherUserId of otherUserIds) {
+          const otherEntry = presence.get(otherUserId)
+          if (otherEntry) {
+            socket.emit('presence:update', {
+              userId: otherUserId,
+              status: otherEntry.status,
+              lastActiveAt: otherEntry.lastActiveAt,
+            })
+          }
+        }
+      }).catch((err) => {
+        console.error('[chat] failed to fetch other members presence:', err)
       })
     }
 
