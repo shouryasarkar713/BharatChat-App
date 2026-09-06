@@ -16,11 +16,12 @@ interface VoiceRecorderProps {
     duration: number
   }) => Promise<void>
   disabled?: boolean
+  onStateChange?: (state: RecorderState) => void
 }
 
 type RecorderState = 'idle' | 'recording' | 'recorded' | 'uploading'
 
-export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
+export function VoiceRecorder({ onSend, disabled, onStateChange }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle')
   const [duration, setDuration] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -31,6 +32,14 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
+
+  const updateState = useCallback(
+    (nextState: RecorderState) => {
+      setState(nextState)
+      onStateChange?.(nextState)
+    },
+    [onStateChange]
+  )
 
   const cleanup = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -79,7 +88,7 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
       recorder.start()
       startTimeRef.current = Date.now()
       setDuration(0)
-      setState('recording')
+      updateState('recording')
 
       timerRef.current = setInterval(() => {
         setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000))
@@ -94,7 +103,7 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
         toast.error('Failed to start recording', { description: e.message })
       }
       cleanup()
-      setState('idle')
+      updateState('idle')
     }
   }
 
@@ -108,7 +117,7 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
       streamRef.current.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
-    setState('recorded')
+    updateState('recorded')
   }
 
   function cancelRecording() {
@@ -120,12 +129,12 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
     setAudioBlob(null)
     setAudioUrl(null)
     setDuration(0)
-    setState('idle')
+    updateState('idle')
   }
 
   async function sendVoiceMessage() {
     if (!audioBlob) return
-    setState('uploading')
+    updateState('uploading')
     try {
       const ext = audioBlob.type.includes('webm') ? 'webm' : audioBlob.type.includes('mp4') ? 'mp4' : 'ogg'
       const file = new File([audioBlob], `voice-${Date.now()}.${ext}`, { type: audioBlob.type })
@@ -135,7 +144,7 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
       const data = await res.json()
       if (!res.ok) {
         toast.error('Upload failed', { description: data.error })
-        setState('recorded')
+        updateState('recorded')
         return
       }
       await onSend({
@@ -148,10 +157,10 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
       setAudioBlob(null)
       setAudioUrl(null)
       setDuration(0)
-      setState('idle')
+      updateState('idle')
     } catch (e: any) {
       toast.error('Failed to send voice message')
-      setState('recorded')
+      updateState('recorded')
     }
   }
 
@@ -160,36 +169,44 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
       <Button
         variant="outline"
         size="icon"
-        className="flex-shrink-0 h-10 w-10 border-slate-200"
+        type="button"
+        className="flex-shrink-0 h-9.5 w-9.5 rounded-xl border-border/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-all duration-150 bg-transparent shadow-none cursor-pointer"
         onClick={startRecording}
         disabled={disabled}
         title="Record voice message"
       >
-        <Mic className="h-4 w-4" />
+        <Mic className="h-4.5 w-4.5" />
       </Button>
     )
   }
 
   if (state === 'recording') {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex-1">
-        <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse" />
-        <span className="text-sm font-mono text-red-700">{formatDuration(duration)}</span>
-        <span className="text-xs text-red-600 flex-1">Recording...</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-xl w-full min-w-0 overflow-hidden animate-in fade-in duration-150">
+        <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+        <span className="text-xs sm:text-sm font-mono text-red-600 dark:text-red-400 font-semibold flex-shrink-0">
+          {formatDuration(duration)}
+        </span>
+        <span className="text-[11px] sm:text-xs text-red-600/90 dark:text-red-400/90 flex-1 truncate">
+          Recording...
+        </span>
         <Button
           variant="ghost"
           size="sm"
+          type="button"
           onClick={cancelRecording}
-          className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-100"
+          className="h-7 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg flex-shrink-0 cursor-pointer"
+          title="Cancel recording"
         >
           <X className="h-3.5 w-3.5" />
         </Button>
         <Button
           size="sm"
+          type="button"
           onClick={stopRecording}
-          className="h-7 px-2 bg-red-600 hover:bg-red-700"
+          className="h-7 px-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg flex-shrink-0 font-medium text-xs shadow-sm cursor-pointer"
         >
-          <Square className="h-3 w-3 mr-1" />
+          <Square className="h-3 w-3 mr-1 fill-current" />
           Stop
         </Button>
       </div>
@@ -198,33 +215,40 @@ export function VoiceRecorder({ onSend, disabled }: VoiceRecorderProps) {
 
   if (state === 'recorded' || state === 'uploading') {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg flex-1">
-        <Mic className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-        <span className="text-sm font-mono text-emerald-700">{formatDuration(duration)}</span>
+      <div className="flex items-center gap-2 px-2.5 py-1.5 bg-card border border-border/50 rounded-xl w-full min-w-0 overflow-hidden shadow-xs animate-in fade-in duration-150">
+        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Mic className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <span className="text-xs font-mono font-semibold text-foreground flex-shrink-0">
+          {formatDuration(duration)}
+        </span>
         {audioUrl && (
-          <audio src={audioUrl} controls className="flex-1 h-7 min-w-0" style={{ maxWidth: '200px' }} />
+          <audio src={audioUrl} controls className="flex-1 h-7 min-w-0 max-w-[120px] xs:max-w-[170px] sm:max-w-[220px]" />
         )}
         <Button
           variant="ghost"
           size="sm"
+          type="button"
           onClick={cancelRecording}
           disabled={state === 'uploading'}
-          className="h-7 px-2 text-slate-500 hover:text-slate-700"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg flex-shrink-0 cursor-pointer"
+          title="Discard recording"
         >
           <X className="h-3.5 w-3.5" />
         </Button>
         <Button
           size="sm"
+          type="button"
           onClick={sendVoiceMessage}
           disabled={state === 'uploading'}
-          className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700"
+          className="h-7 px-3 bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-lg flex-shrink-0 text-xs shadow-sm cursor-pointer"
         >
           {state === 'uploading' ? (
             <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
           ) : (
             <Send className="h-3.5 w-3.5 mr-1" />
           )}
-          {state === 'uploading' ? 'Sending...' : 'Send'}
+          <span>{state === 'uploading' ? 'Sending...' : 'Send'}</span>
         </Button>
       </div>
     )

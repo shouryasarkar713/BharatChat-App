@@ -6,7 +6,7 @@ import { Avatar } from './avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic } from 'lucide-react'
+import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download } from 'lucide-react'
 import { getSocket } from '@/lib/socket'
 import { format, isSameDay } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,10 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'recorded' | 'uploading'>('idle')
+  const isVoiceActive = voiceState !== 'idle'
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevMsgCountRef = useRef(0)
@@ -483,6 +487,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
               decrypted={decrypted}
               conversationId={activeId}
               onDeleteMessage={handleDeleteMessage}
+              onPreviewImage={setPreviewImage}
             />
           )}
         </div>
@@ -505,55 +510,114 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       )}
 
       {/* Composer */}
-      <footer className="p-4 bg-transparent z-10">
-        <div className="max-w-4xl mx-auto flex items-end gap-2.5 p-2 rounded-2xl bg-card/75 border border-border/40 shadow-lift glass relative">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/*,application/pdf,text/plain,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.mp4,.webm,.mp3,.wav"
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            className="flex-shrink-0 h-9.5 w-9.5 rounded-xl border-border/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-all duration-150 bg-transparent shadow-none"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || sending}
-            title="Attach file"
-          >
-            <Paperclip className="h-4.5 w-4.5" />
-          </Button>
-          <VoiceRecorder onSend={handleSendVoice} disabled={sending || uploading} />
-          <Input
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value)
-              handleTyping()
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
-            placeholder={uploading ? 'Uploading...' : 'Type a message...'}
+      <footer className="p-3 sm:p-4 bg-transparent z-10">
+        <div className="max-w-4xl mx-auto flex items-center gap-2 p-2 rounded-2xl bg-card/75 border border-border/40 shadow-lift glass relative">
+          {!isVoiceActive && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*,application/pdf,text/plain,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.mp4,.webm,.mp3,.wav"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                className="flex-shrink-0 h-9.5 w-9.5 rounded-xl border-border/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-all duration-150 bg-transparent shadow-none cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || sending}
+                title="Attach file"
+              >
+                <Paperclip className="h-4.5 w-4.5" />
+              </Button>
+            </>
+          )}
+
+          <VoiceRecorder
+            onSend={handleSendVoice}
             disabled={sending || uploading}
-            className="flex-1 bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 min-h-[38px] placeholder:text-muted-foreground/60"
+            onStateChange={setVoiceState}
           />
-          <Button
-            onClick={handleSend}
-            disabled={sending || !input.trim()}
-            className="bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-xl h-9.5 w-9.5 p-0 flex-shrink-0 transition-transform active:scale-95 shadow-md shadow-primary/10"
-            size="icon"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+
+          {!isVoiceActive && (
+            <>
+              <Input
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value)
+                  handleTyping()
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+                placeholder={uploading ? 'Uploading...' : 'Type a message...'}
+                disabled={sending || uploading}
+                className="flex-1 bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 min-h-[38px] placeholder:text-muted-foreground/60 text-sm"
+              />
+              <Button
+                type="button"
+                onClick={handleSend}
+                disabled={sending || !input.trim()}
+                className="bg-primary hover:bg-[#C87D12] text-primary-foreground font-semibold rounded-xl h-9.5 w-9.5 p-0 flex-shrink-0 transition-transform active:scale-95 shadow-md shadow-primary/10 cursor-pointer"
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
         <p className="text-[10px] text-muted-foreground/75 mt-2 text-center tracking-wide">
-          All messages are end-to-end encrypted. Press Enter to send, Shift+Enter for newline. Tap 🎤 for voice.
+          All messages are end-to-end encrypted. Tap 🎤 for voice.
         </p>
       </footer>
+
+      {/* In-app Image Lightbox Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 animate-in fade-in duration-200"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white bg-gradient-to-b from-black/80 to-transparent z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-medium truncate max-w-[65vw]">{previewImage.name}</p>
+            <div className="flex items-center gap-2">
+              <a
+                href={previewImage.url}
+                download={previewImage.name}
+                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors flex items-center justify-center"
+                title="Download image"
+              >
+                <Download className="h-4.5 w-4.5" />
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer flex items-center justify-center"
+                title="Close"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+          </div>
+          <div
+            className="max-w-full max-h-[82vh] flex items-center justify-center p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewImage.url}
+              alt={previewImage.name}
+              className="max-w-full max-h-[82vh] object-contain rounded-xl shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </main>
   )
 }
@@ -564,12 +628,14 @@ function MessageList({
   decrypted,
   conversationId,
   onDeleteMessage,
+  onPreviewImage,
 }: {
   messages: any[]
   currentUserId: string
   decrypted: Record<string, string>
   conversationId: string
   onDeleteMessage: (messageId: string) => void
+  onPreviewImage?: (attachment: { url: string; name: string }) => void
 }) {
   return (
     <>
@@ -603,6 +669,7 @@ function MessageList({
               showSender={showSender}
               showAvatar={showAvatar}
               onDeleteMessage={onDeleteMessage}
+              onPreviewImage={onPreviewImage}
             />
           </div>
         )
@@ -618,6 +685,7 @@ function MessageBubble({
   showSender,
   showAvatar,
   onDeleteMessage,
+  onPreviewImage,
 }: {
   message: any
   isMe: boolean
@@ -625,6 +693,7 @@ function MessageBubble({
   showSender: boolean
   showAvatar: boolean
   onDeleteMessage: (messageId: string) => void
+  onPreviewImage?: (attachment: { url: string; name: string }) => void
 }) {
   const showProfanity = useChatStore((s) => s.showProfanity)
   const [showActions, setShowActions] = useState(false)
@@ -693,40 +762,53 @@ function MessageBubble({
           )}
         </div>
       )}
-      <div className={cn('max-w-[75%] sm:max-w-[65%] flex flex-col', isMe ? 'items-end' : 'items-start')}>
+      <div className={cn('max-w-[80%] sm:max-w-[65%] flex flex-col', isMe ? 'items-end' : 'items-start')}>
         {showSender && !isMe && (
           <span className="text-[10px] font-semibold text-muted-foreground/80 mb-0.5 ml-1.5">{message.sender?.name}</span>
         )}
-        <div className="relative">
+        <div className="relative flex items-center gap-1.5">
+          {/* Delete action button for sender (left of bubble if isMe, accessible via hover on desktop or tap on phone) */}
+          {isMe && (
+            <div
+              className={cn(
+                'transition-all duration-150 flex-shrink-0',
+                showActions
+                  ? 'opacity-100 pointer-events-auto scale-100'
+                  : 'opacity-0 pointer-events-none scale-95 md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-hover:scale-100'
+              )}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteMessage(message.id)
+                }}
+                className="p-1.5 rounded-lg bg-popover text-muted-foreground hover:text-destructive hover:bg-destructive/10 shadow-xs border border-border/50 transition-colors cursor-pointer"
+                title="Delete message"
+                aria-label="Delete message"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           <div
+            onClick={() => isMe && setShowActions((v) => !v)}
             className={cn(
-              'px-3.5 py-2.5 rounded-2xl break-words shadow-md leading-relaxed text-sm',
+              'px-3.5 py-2.5 rounded-2xl break-words shadow-md leading-relaxed text-sm transition-all',
               isMe
-                ? 'bg-primary text-primary-foreground rounded-tr-none shadow-primary/5'
+                ? 'bg-primary text-primary-foreground rounded-tr-none shadow-primary/5 cursor-pointer active:brightness-95'
                 : 'bg-card text-card-foreground border border-border/30 rounded-tl-none shadow-sm',
               isFlagged && !isMe && 'ring-1 ring-amber-400/50',
               isBlocked && 'opacity-60 italic'
             )}
           >
             {message.attachment ? (
-              <AttachmentView attachment={message.attachment} isMe={isMe} />
+              <AttachmentView attachment={message.attachment} isMe={isMe} onPreviewImage={onPreviewImage} />
             ) : message.contentType === 'TEXT' ? (
               <p className="text-sm whitespace-pre-wrap leading-relaxed">{textToRender}</p>
             ) : null}
           </div>
-          {/* Hover actions — delete button for own messages */}
-          {isMe && showActions && (
-            <button
-              onClick={() => onDeleteMessage(message.id)}
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2 p-1 rounded-md bg-popover text-muted-foreground hover:text-destructive hover:bg-destructive/10 shadow-soft border border-border transition-opacity',
-                isMe ? '-left-9' : '-right-9'
-              )}
-              title="Delete message"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
         <span className={cn('text-[10px] text-muted-foreground mt-0.5', isMe ? 'mr-1' : 'ml-1')}>
           {format(new Date(message.createdAt), 'HH:mm')}
@@ -737,19 +819,49 @@ function MessageBubble({
   )
 }
 
-function AttachmentView({ attachment, isMe }: { attachment: any; isMe: boolean }) {
+function AttachmentView({
+  attachment,
+  isMe,
+  onPreviewImage,
+}: {
+  attachment: any
+  isMe: boolean
+  onPreviewImage?: (attachment: { url: string; name: string }) => void
+}) {
   if (attachment.contentType === 'IMAGE' || attachment.mimeType?.startsWith('image/')) {
     return (
-      <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
-        <img
-          src={attachment.url}
-          alt={attachment.name}
-          className="max-w-64 max-h-64 rounded-lg"
-        />
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation()
+          onPreviewImage?.({ url: attachment.url, name: attachment.name })
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.stopPropagation()
+            onPreviewImage?.({ url: attachment.url, name: attachment.name })
+          }
+        }}
+        className="block cursor-pointer group/img select-none text-left"
+        title="Click to view full photo"
+      >
+        <div className="relative overflow-hidden rounded-xl">
+          <img
+            src={attachment.url}
+            alt={attachment.name}
+            className="max-w-60 max-h-60 rounded-xl object-cover hover:scale-[1.02] transition-transform duration-200"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors rounded-xl flex items-center justify-center pointer-events-none">
+            <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/65 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-xs font-medium">
+              View photo
+            </span>
+          </div>
+        </div>
         <span className={cn('text-[11px] block mt-1', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
           {attachment.name} · {(attachment.size / 1024).toFixed(1)} KB
         </span>
-      </a>
+      </div>
     )
   }
   if (attachment.contentType === 'VIDEO' || attachment.mimeType?.startsWith('video/')) {
