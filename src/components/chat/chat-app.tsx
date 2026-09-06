@@ -21,6 +21,7 @@ export function ChatApp() {
   const conversations = useChatStore((s) => s.conversations)
   const activeId = useChatStore((s) => s.activeConversationId)
   const storeCurrentUser = useChatStore((s) => s.currentUser)
+  const setActive = useChatStore((s) => s.setActiveConversation)
   const [mobileShowThread, setMobileShowThread] = useState(false)
   const [loadedConvs, setLoadedConvs] = useState(false)
 
@@ -91,12 +92,11 @@ export function ChatApp() {
     }
   }, [status, setConversations])
 
-  // For mobile: when activeId changes, show the thread
+  // For mobile: keep mobileShowThread in sync whenever activeId changes
   useEffect(() => {
-    Promise.resolve().then(() => {
-      if (activeId) setMobileShowThread(true)
-      else setMobileShowThread(false)
-    })
+    if (activeId) {
+      setMobileShowThread(true)
+    }
   }, [activeId])
 
   if (status === 'loading') {
@@ -127,10 +127,19 @@ export function ChatApp() {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <div className={`${mobileShowThread ? 'hidden md:flex' : 'flex'} w-full md:w-auto flex-shrink-0`}>
-        <Sidebar currentUser={sidebarUser} />
+        <Sidebar
+          currentUser={sidebarUser}
+          onSelectConversation={() => setMobileShowThread(true)}
+        />
       </div>
       <div className={`${mobileShowThread ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>
-        <ChatThread currentUserId={userId} onBack={() => setMobileShowThread(false)} />
+        <ChatThread
+          currentUserId={userId}
+          onBack={() => {
+            setMobileShowThread(false)
+            setActive(null)
+          }}
+        />
       </div>
     </div>
   )

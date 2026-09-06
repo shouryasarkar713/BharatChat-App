@@ -25,10 +25,21 @@ interface SidebarUser {
   bio?: string | null
 }
 
-export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
+interface SidebarProps {
+  currentUser: SidebarUser
+  onSelectConversation?: (id: string) => void
+}
+
+export function Sidebar({ currentUser, onSelectConversation }: SidebarProps) {
   const conversations = useChatStore((s) => s.conversations)
   const activeId = useChatStore((s) => s.activeConversationId)
   const setActive = useChatStore((s) => s.setActiveConversation)
+
+  const handleSelectConversation = (id: string) => {
+    setActive(id)
+    onSelectConversation?.(id)
+  }
+
   const presence = useChatStore((s) => s.presence)
   const socketConnected = useChatStore((s) => s.socketConnected)
   const [showNew, setShowNew] = useState(false)
@@ -169,7 +180,7 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
             setSearch('')
           }}
           onSelectConversation={(id) => {
-            setActive(id)
+            handleSelectConversation(id)
             setSearchMode(false)
             setSearch('')
           }}
@@ -207,9 +218,10 @@ export function Sidebar({ currentUser }: { currentUser: SidebarUser }) {
                 return (
                   <button
                     key={c.id}
-                    onClick={() => setActive(c.id)}
+                    type="button"
+                    onClick={() => handleSelectConversation(c.id)}
                     className={cn(
-                      'w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 transition-all relative border border-transparent duration-200',
+                      'w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 transition-all relative border border-transparent duration-200 cursor-pointer select-none',
                       isActive
                         ? 'bg-primary/8 shadow-sm border-l-4 border-l-primary rounded-l-none'
                         : 'hover:bg-muted/45 hover:translate-x-[2px]'
