@@ -41,7 +41,7 @@ async function ensureUploadTableExists() {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ file: string }> }
 ) {
   const { file } = await params
@@ -59,12 +59,20 @@ export async function GET(
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 
-    return new NextResponse(upload.data, {
-      headers: {
-        'Content-Type': upload.mimeType,
-        'Cache-Control': 'private, max-age=3600',
-      },
-    })
+    const url = new URL(req.url)
+    const isDownload = url.searchParams.get('download') === '1'
+    const isImageOrMedia = upload.mimeType.startsWith('image/') || upload.mimeType.startsWith('video/') || upload.mimeType.startsWith('audio/')
+
+    const headers: Record<string, string> = {
+      'Content-Type': upload.mimeType,
+      'Cache-Control': 'private, max-age=3600',
+    }
+
+    if (isDownload || !isImageOrMedia) {
+      headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(upload.name)}"`
+    }
+
+    return new NextResponse(upload.data, { headers })
   } catch (error) {
     console.error('File retrieve error:', error)
     return NextResponse.json({ error: 'File retrieve failed' }, { status: 500 })

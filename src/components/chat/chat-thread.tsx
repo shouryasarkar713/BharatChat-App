@@ -6,7 +6,7 @@ import { Avatar } from './avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download } from 'lucide-react'
+import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText } from 'lucide-react'
 import { getSocket } from '@/lib/socket'
 import { format, isSameDay } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -55,7 +55,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
-  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string; messageId?: string; isMe?: boolean } | null>(null)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'recorded' | 'uploading'>('idle')
   const isVoiceActive = voiceState !== 'idle'
 
@@ -588,16 +588,58 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
             className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white bg-gradient-to-b from-black/80 to-transparent z-10"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-medium truncate max-w-[65vw]">{previewImage.name}</p>
+            <p className="text-sm font-medium truncate max-w-[50vw] sm:max-w-[65vw]">{previewImage.name}</p>
             <div className="flex items-center gap-2">
-              <a
-                href={previewImage.url}
-                download={previewImage.name}
-                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors flex items-center justify-center"
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const downloadUrl = previewImage.url.includes('?') 
+                      ? `${previewImage.url}&download=1` 
+                      : `${previewImage.url}?download=1`
+                    const res = await fetch(downloadUrl)
+                    if (!res.ok) throw new Error('Download failed')
+                    const blob = await res.blob()
+                    const blobUrl = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = blobUrl
+                    a.download = previewImage.name || 'image'
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    URL.revokeObjectURL(blobUrl)
+                    toast.success('Image downloaded')
+                  } catch {
+                    const a = document.createElement('a')
+                    a.href = previewImage.url.includes('?') ? `${previewImage.url}&download=1` : `${previewImage.url}?download=1`
+                    a.download = previewImage.name || 'image'
+                    a.target = '_blank'
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                  }
+                }}
+                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors flex items-center justify-center cursor-pointer"
                 title="Download image"
               >
                 <Download className="h-4.5 w-4.5" />
-              </a>
+              </button>
+
+              {previewImage.isMe && previewImage.messageId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteMessage(previewImage.messageId!)
+                    setPreviewImage(null)
+                  }}
+                  className="p-2 rounded-xl bg-destructive/80 hover:bg-destructive text-white transition-colors flex items-center justify-center cursor-pointer"
+                  title="Delete image"
+                  aria-label="Delete image"
+                >
+                  <Trash2 className="h-4.5 w-4.5" />
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setPreviewImage(null)}
@@ -637,7 +679,7 @@ function MessageList({
   decrypted: Record<string, string>
   conversationId: string
   onDeleteMessage: (messageId: string) => void
-  onPreviewImage?: (attachment: { url: string; name: string }) => void
+  onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
   return (
     <>
@@ -695,7 +737,7 @@ function MessageBubble({
   showSender: boolean
   showAvatar: boolean
   onDeleteMessage: (messageId: string) => void
-  onPreviewImage?: (attachment: { url: string; name: string }) => void
+  onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
   const showProfanity = useChatStore((s) => s.showProfanity)
   const [showActions, setShowActions] = useState(false)
@@ -806,7 +848,13 @@ function MessageBubble({
             )}
           >
             {message.attachment ? (
-              <AttachmentView attachment={message.attachment} isMe={isMe} onPreviewImage={onPreviewImage} />
+              <AttachmentView
+                attachment={message.attachment}
+                isMe={isMe}
+                messageId={message.id}
+                onDeleteMessage={onDeleteMessage}
+                onPreviewImage={onPreviewImage}
+              />
             ) : message.contentType === 'TEXT' ? (
               <p className="text-sm whitespace-pre-wrap leading-relaxed">{textToRender}</p>
             ) : null}
@@ -824,58 +872,126 @@ function MessageBubble({
 function AttachmentView({
   attachment,
   isMe,
+  messageId,
+  onDeleteMessage,
   onPreviewImage,
 }: {
   attachment: any
   isMe: boolean
-  onPreviewImage?: (attachment: { url: string; name: string }) => void
+  messageId?: string
+  onDeleteMessage?: (messageId: string) => void
+  onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
+  const handleDownloadFile = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const downloadUrl = attachment.url.includes('?')
+        ? `${attachment.url}&download=1`
+        : `${attachment.url}?download=1`
+      const res = await fetch(downloadUrl)
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = attachment.name || 'document'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+      toast.success(`Downloading ${attachment.name}`)
+    } catch {
+      const a = document.createElement('a')
+      a.href = attachment.url.includes('?') ? `${attachment.url}&download=1` : `${attachment.url}?download=1`
+      a.download = attachment.name || 'document'
+      a.target = '_blank'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+  }
+
   if (attachment.contentType === 'IMAGE' || attachment.mimeType?.startsWith('image/')) {
     return (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={(e) => {
-          e.stopPropagation()
-          onPreviewImage?.({ url: attachment.url, name: attachment.name })
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+      <div className="relative group/img select-none text-left">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
             e.stopPropagation()
-            onPreviewImage?.({ url: attachment.url, name: attachment.name })
-          }
-        }}
-        className="block cursor-pointer group/img select-none text-left"
-        title="Click to view full photo"
-      >
-        <div className="relative overflow-hidden rounded-xl">
-          <img
-            src={attachment.url}
-            alt={attachment.name}
-            className="max-w-60 max-h-60 rounded-xl object-cover hover:scale-[1.02] transition-transform duration-200"
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors rounded-xl flex items-center justify-center pointer-events-none">
-            <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/65 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-xs font-medium">
-              View photo
-            </span>
+            onPreviewImage?.({ url: attachment.url, name: attachment.name, messageId, isMe })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.stopPropagation()
+              onPreviewImage?.({ url: attachment.url, name: attachment.name, messageId, isMe })
+            }
+          }}
+          className="block cursor-pointer"
+          title="Click to view full photo"
+        >
+          <div className="relative overflow-hidden rounded-xl">
+            <img
+              src={attachment.url}
+              alt={attachment.name}
+              className="max-w-60 max-h-60 rounded-xl object-cover hover:scale-[1.02] transition-transform duration-200"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors rounded-xl flex items-center justify-center pointer-events-none">
+              <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/65 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-xs font-medium">
+                View photo
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Delete action overlay for media sender (easy 1-tap on mobile & click on desktop) */}
+        {isMe && messageId && onDeleteMessage && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteMessage(messageId)
+            }}
+            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/65 hover:bg-destructive text-white backdrop-blur-sm shadow-md transition-all cursor-pointer z-10"
+            title="Delete photo"
+            aria-label="Delete photo"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+
         <span className={cn('text-[11px] block mt-1', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
           {attachment.name} · {(attachment.size / 1024).toFixed(1)} KB
         </span>
       </div>
     )
   }
+
   if (attachment.contentType === 'VIDEO' || attachment.mimeType?.startsWith('video/')) {
     return (
-      <div>
+      <div className="relative">
         <video src={attachment.url} controls className="max-w-64 max-h-64 rounded-lg" />
+        {isMe && messageId && onDeleteMessage && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteMessage(messageId)
+            }}
+            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/65 hover:bg-destructive text-white backdrop-blur-sm shadow-md transition-all cursor-pointer z-10"
+            title="Delete video"
+            aria-label="Delete video"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
         <span className={cn('text-[11px] block mt-1', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
           {attachment.name}
         </span>
       </div>
     )
   }
+
   if (attachment.contentType === 'AUDIO' || attachment.mimeType?.startsWith('audio/')) {
     return (
       <div className="flex flex-col gap-1.5">
@@ -894,23 +1010,68 @@ function AttachmentView({
       </div>
     )
   }
+
   return (
-    <a
-      href={attachment.url}
-      target="_blank"
-      rel="noreferrer"
+    <div
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-lg border',
-        isMe ? 'border-primary-foreground/30 text-primary-foreground' : 'border-border text-foreground bg-card'
+        'flex items-center gap-2.5 p-2.5 rounded-xl border max-w-xs transition-colors',
+        isMe
+          ? 'border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground'
+          : 'border-border/60 text-foreground bg-card'
       )}
     >
-      <Paperclip className="h-4 w-4 flex-shrink-0" />
-      <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{attachment.name}</p>
-        <p className={cn('text-[11px]', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-          {(attachment.size / 1024).toFixed(1)} KB · Click to download
+      <div
+        className={cn(
+          'h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0',
+          isMe ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
+        )}
+      >
+        <FileText className="h-4.5 w-4.5" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold truncate leading-tight">{attachment.name}</p>
+        <p className={cn('text-[10px] mt-0.5', isMe ? 'text-primary-foreground/75' : 'text-muted-foreground')}>
+          {(attachment.size / 1024).toFixed(1)} KB
         </p>
       </div>
-    </a>
+
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          type="button"
+          onClick={handleDownloadFile}
+          className={cn(
+            'p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center',
+            isMe
+              ? 'bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground'
+              : 'bg-muted hover:bg-accent text-foreground hover:text-accent-foreground'
+          )}
+          title={`Download ${attachment.name}`}
+          aria-label={`Download ${attachment.name}`}
+        >
+          <Download className="h-4 w-4" />
+        </button>
+
+        {isMe && messageId && onDeleteMessage && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteMessage(messageId)
+            }}
+            className={cn(
+              'p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center',
+              isMe
+                ? 'bg-destructive/80 hover:bg-destructive text-white'
+                : 'bg-muted hover:bg-destructive/10 text-muted-foreground hover:text-destructive'
+            )}
+            title="Delete file"
+            aria-label="Delete file"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
