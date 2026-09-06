@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 export function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
-  const [loginForm, setLoginForm] = useState({ email: 'alice@chat.dev', password: 'password123' })
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [registerForm, setRegisterForm] = useState({
     name: '',
     username: '',
