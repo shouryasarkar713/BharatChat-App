@@ -52,16 +52,8 @@ prompt
 server.log
 # Skills directory
 /skills/
-
-# Local databases and logs
-/db/
-*.db
-*.db-shm
-*.db-wal
-/mini-services/chat-service/log.txt
-
-# Local uploads
-/uploads/
-
-# Local agent configs
-/.agents/
+.agents/
+uploads/*
+!uploads/.gitkeep
+db/*.db
+mini-services/chat-service/log.txt

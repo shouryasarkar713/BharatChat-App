@@ -234,5 +234,5 @@ export function AuthScreen() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

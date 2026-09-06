@@ -62,10 +62,7 @@ interface ChatState {
   socketConnected: boolean
   // decryption cache: conversationId -> decrypted content for message id
   decrypted: Record<string, string> // key: `${conversationId}:${messageId}` -> plaintext
-  searchTargetMessageId: string | null
-  setSearchTargetMessageId: (id: string | null) => void
-  showProfanity: boolean
-  setShowProfanity: (show: boolean) => void
+
   setCurrentUser: (u: ChatUser) => void
   setSocketConnected: (c: boolean) => void
   setConversations: (c: Conversation[]) => void
@@ -80,6 +77,10 @@ interface ChatState {
   clearTyping: (conversationId: string, userId: string) => void
   updateLastRead: (conversationId: string) => void
   deleteMessage: (conversationId: string, messageId: string) => void
+  searchTargetMessageId: string | null
+  setSearchTargetMessageId: (id: string | null) => void
+  showProfanity: boolean
+  setShowProfanity: (show: boolean) => void
   reset: () => void
 }
 

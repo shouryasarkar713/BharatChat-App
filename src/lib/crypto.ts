@@ -1,6 +1,6 @@
 // E2E encryption helpers (client-side AES-GCM + RSA-OAEP key wrapping).
 //
-// Architecture details:
+// Architecture (simplified for the demo):
 //  - Each user generates an RSA-OAEP keypair on first login (stored in IndexedDB).
 //    The public key is uploaded to the server (`User.publicKey`).
 //  - When a user creates/opens an encrypted conversation, the conversation has an

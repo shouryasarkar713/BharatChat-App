@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 
-// Seed database accounts for initial verification and testing.
-// Test accounts: alice@chat.dev / bob@chat.dev / carol@chat.dev  (password: password123)
+// Seed demo accounts so the user can immediately log in and test.
+// Demo accounts: alice@chat.dev / bob@chat.dev / carol@chat.dev  (password: password123)
 export async function POST() {
   const seedUsers = [
     { name: 'Alice Chen', username: 'alice', email: 'alice@chat.dev', avatarColor: '#10b981' },

@@ -195,6 +195,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
 
     // Moderation (client-side preview; server-side also runs)
     const mod = moderateMessage(plaintext)
+    const finalText = mod.cleaned || plaintext
     if (mod.status === 'BLOCKED') {
       toast.error('Message blocked', { description: mod.reason })
       setSending(false)

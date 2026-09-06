@@ -27,9 +27,9 @@ export function NewConversationDialog({
   onOpenChange,
   currentUserId,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  currentUserId: string;
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  currentUserId: string
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserResult[]>([])

@@ -147,7 +147,9 @@ function SelectScrollUpButton({
         className
       )}
       {...props}
-    />
+    >
+      <ChevronUpIcon className="size-4" />
+    </SelectPrimitive.ScrollUpButton>
   )
 }
 
