@@ -72,6 +72,7 @@ interface ChatState {
   prependMessages: (conversationId: string, msgs: ChatMessage[]) => void
   setMessages: (conversationId: string, msgs: ChatMessage[]) => void
   setDecrypted: (conversationIdId: string, messageId: string, plaintext: string) => void
+  setBatchDecrypted: (conversationId: string, items: { id: string; plaintext: string }[]) => void
   updatePresence: (userId: string, status: PresenceStatus) => void
   setTyping: (conversationId: string, userId: string) => void
   clearTyping: (conversationId: string, userId: string) => void
@@ -165,6 +166,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((s) => ({
       decrypted: { ...s.decrypted, [`${conversationId}:${messageId}`]: plaintext },
     })),
+
+  setBatchDecrypted: (conversationId, items) =>
+    set((s) => {
+      if (!items.length) return s
+      const updated = { ...s.decrypted }
+      for (const item of items) {
+        updated[`${conversationId}:${item.id}`] = item.plaintext
+      }
+      return { decrypted: updated }
+    }),
 
   updatePresence: (userId, status) =>
     set((s) => ({ presence: { ...s.presence, [userId]: status } })),

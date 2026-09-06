@@ -12,41 +12,45 @@ export async function GET(
   if (!user) return unauthorized()
   const { id } = await params
 
-  const membership = await db.conversationMember.findUnique({
-    where: { conversationId_userId: { conversationId: id, userId: user.id } },
-  })
-  if (!membership) {
-    return NextResponse.json({ error: 'Not a member' }, { status: 403 })
-  }
-
   const url = new URL(req.url)
   const cursor = url.searchParams.get('cursor')
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100)
 
-  const messages = await db.message.findMany({
-    where: { conversationId: id },
-    orderBy: { createdAt: 'desc' },
-    take: limit + 1,
-    ...(cursor
-      ? {
-          skip: 1,
-          cursor: { createdAt: new Date(cursor) } as any,
-        }
-      : {}),
-    include: {
-      sender: { select: { id: true, name: true, username: true, avatarColor: true, avatarUrl: true } },
-    },
-  })
+  // Run membership check and message retrieval in parallel
+  const [membership, messages] = await Promise.all([
+    db.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId: id, userId: user.id } },
+      select: { role: true },
+    }),
+    db.message.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor
+        ? {
+            skip: 1,
+            cursor: { createdAt: new Date(cursor) } as any,
+          }
+        : {}),
+      include: {
+        sender: { select: { id: true, name: true, username: true, avatarColor: true, avatarUrl: true } },
+      },
+    }),
+  ])
+
+  if (!membership) {
+    return NextResponse.json({ error: 'Not a member' }, { status: 403 })
+  }
 
   const hasMore = messages.length > limit
   const items = hasMore ? messages.slice(0, limit) : messages
   const nextCursor = hasMore ? items[items.length - 1].createdAt.toISOString() : null
 
-  // Mark conversation as read for this user
-  await db.conversationMember.update({
+  // Mark conversation as read asynchronously without blocking response
+  db.conversationMember.update({
     where: { conversationId_userId: { conversationId: id, userId: user.id } },
     data: { lastReadAt: new Date() },
-  })
+  }).catch(() => {})
 
   return NextResponse.json({
     messages: items.map((m) => ({

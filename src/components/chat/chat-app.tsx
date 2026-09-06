@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Sidebar } from './sidebar'
 import { ChatThread } from './chat-thread'
-import { useChatRealtime } from '@/hooks/use-chat-realtime'
+import { useChatRealtime, prefetchConversation } from '@/hooks/use-chat-realtime'
 import { useChatStore } from '@/store/chat-store'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { Loader2 } from 'lucide-react'
@@ -79,6 +79,14 @@ export function ChatApp() {
           }))
         )
         setLoadedConvs(true)
+
+        // Background prefetch top conversations so opening any chat is instantaneous (0ms)
+        if (userId) {
+          const topConvs = (data.conversations || []).slice(0, 5)
+          topConvs.forEach((c: any) => {
+            prefetchConversation(c.id, userId)
+          })
+        }
       } catch (e) {
         console.error('failed to load conversations', e)
       }

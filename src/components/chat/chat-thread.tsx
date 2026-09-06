@@ -53,6 +53,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string; messageId?: string; isMe?: boolean } | null>(null)
@@ -73,20 +74,25 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         const res = await fetch(url)
         if (!res.ok) return
         const data = await res.json()
+        const msgs = data.messages.reverse()
         if (replace) {
-          useChatStore.getState().setMessages(convId, data.messages.reverse())
+          useChatStore.getState().setMessages(convId, msgs)
           // Mark as read
           updateLastRead(convId)
+          ensureDecrypted(convId, msgs, currentUserId).catch(() => {})
         } else {
-          useChatStore.getState().prependMessages(convId, data.messages.reverse())
+          useChatStore.getState().prependMessages(convId, msgs)
+          ensureDecrypted(convId, msgs, currentUserId).catch(() => {})
         }
         setCursor(data.nextCursor)
         setHasMore(!!data.nextCursor)
       } catch (e) {
         console.error('failed to load messages', e)
+      } finally {
+        setInitialLoading(false)
       }
     },
-    [updateLastRead]
+    [updateLastRead, currentUserId]
   )
 
   async function initConversationKey(convId: string) {
@@ -104,19 +110,25 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       ])
       await cacheAesKey(convId, key)
     }
-    // Decrypt any pending messages
+    // Decrypt any pending cached messages immediately
     await ensureDecrypted(convId, useChatStore.getState().messagesByConversation[convId] || [], currentUserId)
   }
 
   // Load messages when conversation changes
   useEffect(() => {
     if (!activeId) return
-    // Reset pagination, then fetch — wrap in microtask to avoid setState-in-effect warning
+    const hasCached = (useChatStore.getState().messagesByConversation[activeId] || []).length > 0
+    if (!hasCached) {
+      setInitialLoading(true)
+    } else {
+      setInitialLoading(false)
+    }
+
     Promise.resolve().then(() => {
       setCursor(null)
       setHasMore(true)
-      loadMessages(activeId, null, true)
       initConversationKey(activeId)
+      loadMessages(activeId, null, true)
     })
   }, [activeId, loadMessages])
 
@@ -475,7 +487,27 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
               <span className="text-xs text-muted-foreground">Loading older messages...</span>
             </div>
           )}
-          {messages.length === 0 ? (
+          {initialLoading && messages.length === 0 ? (
+            <div className="p-4 space-y-4 animate-pulse">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-muted/70 flex-shrink-0" />
+                <div className="space-y-1.5 max-w-[65%]">
+                  <div className="h-3 w-16 bg-muted/60 rounded" />
+                  <div className="h-9 w-44 bg-muted/70 rounded-2xl rounded-tl-none" />
+                </div>
+              </div>
+              <div className="flex items-end justify-end gap-2.5">
+                <div className="h-10 w-52 bg-primary/20 rounded-2xl rounded-tr-none" />
+              </div>
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-muted/70 flex-shrink-0" />
+                <div className="space-y-1.5 max-w-[65%]">
+                  <div className="h-3 w-20 bg-muted/60 rounded" />
+                  <div className="h-14 w-60 bg-muted/70 rounded-2xl rounded-tl-none" />
+                </div>
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="h-14 w-14 rounded-2xl bg-accent/40 mx-auto flex items-center justify-center mb-3 border border-accent-foreground/15">
                 <MessageSquare className="h-7 w-7 text-accent-foreground/80" />

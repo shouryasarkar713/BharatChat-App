@@ -14,6 +14,7 @@ import { NewConversationDialog } from './new-conversation-dialog'
 import { ProfileDialog } from './profile-dialog'
 import { MessageSearch } from './message-search'
 import { ThemeToggle } from './theme-toggle'
+import { prefetchConversation } from '@/hooks/use-chat-realtime'
 
 interface SidebarUser {
   id: string
@@ -222,6 +223,8 @@ export function Sidebar({ currentUser, onSelectConversation }: SidebarProps) {
                     key={c.id}
                     type="button"
                     onClick={() => handleSelectConversation(c.id)}
+                    onPointerDown={() => prefetchConversation(c.id, currentUser.id)}
+                    onMouseEnter={() => prefetchConversation(c.id, currentUser.id)}
                     className={cn(
                       'w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 transition-all relative border border-transparent duration-200 cursor-pointer select-none',
                       isActive

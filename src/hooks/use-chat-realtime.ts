@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { getSocket, disconnectSocket, getExistingSocket } from '@/lib/socket'
 import { useChatStore } from '@/store/chat-store'
 import { toast } from 'sonner'
-import { decryptMessage, getCachedAesKey, getOrCreateRsaKeyPair, exportPublicKeyB64 } from '@/lib/crypto'
+import { decryptMessage, getCachedAesKey, cacheAesKey, getOrCreateRsaKeyPair, exportPublicKeyB64 } from '@/lib/crypto'
 
 // Use a ref-based guard so StrictMode double-invocation doesn't break us
 let activeUserId: string | null = null
@@ -167,21 +167,69 @@ export function useChatRealtime() {
   return { connected: useChatStore((s) => s.socketConnected), userId, userName }
 }
 
-// Decrypt all encrypted messages in a conversation that haven't been decrypted yet.
-// Called from the conversation view.
+// Decrypt all encrypted messages in a conversation in parallel with a single store update
 export async function ensureDecrypted(conversationId: string, messages: any[], _currentUserId: string) {
-  const aesKey = await getCachedAesKey(conversationId)
-  if (!aesKey) return
-  const store = useChatStore.getState()
-  for (const m of messages) {
-    if (m.encrypted && m.contentType === 'TEXT' && !store.decrypted[`${conversationId}:${m.id}`]) {
-      try {
-        const plaintext = await decryptMessage(aesKey, m.content)
-        store.setDecrypted(conversationId, m.id, plaintext)
-      } catch (e) {
-        // Key mismatch — try to fetch fresh key
-        console.warn('decrypt failed', e)
-      }
+  let aesKey = await getCachedAesKey(conversationId)
+  if (!aesKey) {
+    try {
+      const seed = conversationId + ':pulsechat-e2e-seed-v1'
+      const seedBytes = new TextEncoder().encode(seed)
+      const hashBuf = await crypto.subtle.digest('SHA-256', seedBytes)
+      aesKey = await crypto.subtle.importKey('raw', hashBuf, { name: 'AES-GCM' }, true, [
+        'encrypt',
+        'decrypt',
+      ])
+      await cacheAesKey(conversationId, aesKey)
+    } catch (e) {
+      console.warn('Failed to derive AES key for conversation', e)
+      return
     }
+  }
+
+  const store = useChatStore.getState()
+  const pending = messages.filter(
+    (m) => m.encrypted && m.contentType === 'TEXT' && !store.decrypted[`${conversationId}:${m.id}`]
+  )
+  if (pending.length === 0) return
+
+  const results = await Promise.all(
+    pending.map(async (m) => {
+      try {
+        const plaintext = await decryptMessage(aesKey!, m.content)
+        return { id: m.id, plaintext }
+      } catch (e) {
+        return null
+      }
+    })
+  )
+
+  const successful = results.filter(Boolean) as { id: string; plaintext: string }[]
+  if (successful.length > 0) {
+    store.setBatchDecrypted(conversationId, successful)
+  }
+}
+
+const prefetchingSet = new Set<string>()
+
+// Prefetch a conversation's messages and pre-decrypt them in the background
+export async function prefetchConversation(conversationId: string, currentUserId: string) {
+  const store = useChatStore.getState()
+  // If messages are already in memory or currently prefetching, skip
+  if ((store.messagesByConversation[conversationId]?.length ?? 0) > 0 || prefetchingSet.has(conversationId)) {
+    return
+  }
+
+  prefetchingSet.add(conversationId)
+  try {
+    const res = await fetch(`/api/conversations/${conversationId}/messages?limit=50`)
+    if (!res.ok) return
+    const data = await res.json()
+    const msgs = data.messages.reverse()
+    store.setMessages(conversationId, msgs)
+    await ensureDecrypted(conversationId, msgs, currentUserId)
+  } catch (e) {
+    // Ignore background prefetch errors
+  } finally {
+    prefetchingSet.delete(conversationId)
   }
 }
