@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Sidebar } from './sidebar'
 import { ChatThread } from './chat-thread'
@@ -99,6 +99,46 @@ export function ChatApp() {
     }
   }, [activeId])
 
+  // Sync browser history so phone hardware/gesture back button returns to conversation list
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    if (mobileShowThread && activeId) {
+      if (!window.history.state?.chat) {
+        window.history.pushState({ ...(window.history.state || {}), chat: true, conversationId: activeId }, '')
+      } else if (window.history.state?.conversationId !== activeId) {
+        window.history.replaceState({ ...(window.history.state || {}), chat: true, conversationId: activeId }, '')
+      }
+    }
+  }, [mobileShowThread, activeId])
+
+  // Handle phone back button (popstate event)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handlePopState = (event: PopStateEvent) => {
+      // If returning from an image lightbox, do not exit the chat thread
+      if (event.state?.lightbox) return
+
+      // If we are no longer in chat state, return to the conversations list
+      if (!event.state?.chat) {
+        setMobileShowThread(false)
+        setActive(null)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [setActive])
+
+  const handleBackToConversations = useCallback(() => {
+    setMobileShowThread(false)
+    setActive(null)
+    if (typeof window !== 'undefined' && window.history.state?.chat) {
+      window.history.back()
+    }
+  }, [setActive])
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -135,10 +175,7 @@ export function ChatApp() {
       <div className={`${mobileShowThread ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>
         <ChatThread
           currentUserId={userId}
-          onBack={() => {
-            setMobileShowThread(false)
-            setActive(null)
-          }}
+          onBack={handleBackToConversations}
         />
       </div>
     </div>

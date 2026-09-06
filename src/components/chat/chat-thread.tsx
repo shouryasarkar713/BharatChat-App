@@ -580,87 +580,11 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
 
       {/* In-app Image Lightbox Modal */}
       {previewImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 animate-in fade-in duration-200"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div
-            className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white bg-gradient-to-b from-black/80 to-transparent z-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm font-medium truncate max-w-[50vw] sm:max-w-[65vw]">{previewImage.name}</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    const downloadUrl = previewImage.url.includes('?') 
-                      ? `${previewImage.url}&download=1` 
-                      : `${previewImage.url}?download=1`
-                    const res = await fetch(downloadUrl)
-                    if (!res.ok) throw new Error('Download failed')
-                    const blob = await res.blob()
-                    const blobUrl = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = blobUrl
-                    a.download = previewImage.name || 'image'
-                    document.body.appendChild(a)
-                    a.click()
-                    document.body.removeChild(a)
-                    URL.revokeObjectURL(blobUrl)
-                    toast.success('Image downloaded')
-                  } catch {
-                    const a = document.createElement('a')
-                    a.href = previewImage.url.includes('?') ? `${previewImage.url}&download=1` : `${previewImage.url}?download=1`
-                    a.download = previewImage.name || 'image'
-                    a.target = '_blank'
-                    document.body.appendChild(a)
-                    a.click()
-                    document.body.removeChild(a)
-                  }
-                }}
-                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors flex items-center justify-center cursor-pointer"
-                title="Download image"
-              >
-                <Download className="h-4.5 w-4.5" />
-              </button>
-
-              {previewImage.isMe && previewImage.messageId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleDeleteMessage(previewImage.messageId!)
-                    setPreviewImage(null)
-                  }}
-                  className="p-2 rounded-xl bg-destructive/80 hover:bg-destructive text-white transition-colors flex items-center justify-center cursor-pointer"
-                  title="Delete image"
-                  aria-label="Delete image"
-                >
-                  <Trash2 className="h-4.5 w-4.5" />
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setPreviewImage(null)}
-                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer flex items-center justify-center"
-                title="Close"
-              >
-                <X className="h-4.5 w-4.5" />
-              </button>
-            </div>
-          </div>
-          <div
-            className="max-w-full max-h-[82vh] flex items-center justify-center p-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={previewImage.url}
-              alt={previewImage.name}
-              className="max-w-full max-h-[82vh] object-contain rounded-xl shadow-2xl"
-            />
-          </div>
-        </div>
+        <LightboxModal
+          previewImage={previewImage}
+          onClose={() => setPreviewImage(null)}
+          onDeleteMessage={handleDeleteMessage}
+        />
       )}
     </main>
   )
@@ -1071,6 +995,127 @@ function AttachmentView({
             <Trash2 className="h-4 w-4" />
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+function LightboxModal({
+  previewImage,
+  onClose,
+  onDeleteMessage,
+}: {
+  previewImage: { url: string; name: string; messageId?: string; isMe?: boolean }
+  onClose: () => void
+  onDeleteMessage: (messageId: string) => void
+}) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    if (!window.history.state?.lightbox) {
+      window.history.pushState({ ...(window.history.state || {}), lightbox: true }, '')
+    }
+
+    const handlePopState = () => {
+      onClose()
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [onClose])
+
+  const handleClose = () => {
+    if (typeof window !== 'undefined' && window.history.state?.lightbox) {
+      window.history.back()
+    } else {
+      onClose()
+    }
+  }
+
+  const handleDownload = async () => {
+    try {
+      const downloadUrl = previewImage.url.includes('?')
+        ? `${previewImage.url}&download=1`
+        : `${previewImage.url}?download=1`
+      const res = await fetch(downloadUrl)
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = previewImage.name || 'image'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+      toast.success('Image downloaded')
+    } catch {
+      const a = document.createElement('a')
+      a.href = previewImage.url.includes('?') ? `${previewImage.url}&download=1` : `${previewImage.url}?download=1`
+      a.download = previewImage.name || 'image'
+      a.target = '_blank'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 animate-in fade-in duration-200"
+      onClick={handleClose}
+    >
+      <div
+        className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white bg-gradient-to-b from-black/80 to-transparent z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium truncate max-w-[50vw] sm:max-w-[65vw]">{previewImage.name}</p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors flex items-center justify-center cursor-pointer"
+            title="Download image"
+          >
+            <Download className="h-4.5 w-4.5" />
+          </button>
+
+          {previewImage.isMe && previewImage.messageId && (
+            <button
+              type="button"
+              onClick={() => {
+                onDeleteMessage(previewImage.messageId!)
+                handleClose()
+              }}
+              className="p-2 rounded-xl bg-destructive/80 hover:bg-destructive text-white transition-colors flex items-center justify-center cursor-pointer"
+              title="Delete image"
+              aria-label="Delete image"
+            >
+              <Trash2 className="h-4.5 w-4.5" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleClose}
+            className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer flex items-center justify-center"
+            title="Close"
+          >
+            <X className="h-4.5 w-4.5" />
+          </button>
+        </div>
+      </div>
+      <div
+        className="max-w-full max-h-[82vh] flex items-center justify-center p-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={previewImage.url}
+          alt={previewImage.name}
+          className="max-w-full max-h-[82vh] object-contain rounded-xl shadow-2xl"
+        />
       </div>
     </div>
   )
