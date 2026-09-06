@@ -62,6 +62,21 @@ export function ChatApp() {
     }).catch(() => {})
   }, [userId, userName, setCurrentUser])
 
+  // Instantly restore cached conversations on mount for 0ms cold start
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const cached = localStorage.getItem('bharatchat-cached-conversations')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setConversations(parsed)
+          setLoadedConvs(true)
+        }
+      }
+    } catch (e) {}
+  }, [setConversations])
+
   // Load conversations
   useEffect(() => {
     if (status !== 'authenticated') return
@@ -72,13 +87,15 @@ export function ChatApp() {
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
-        setConversations(
-          data.conversations.map((c: any) => ({
-            ...c,
-            unreadCount: 0,
-          }))
-        )
+        const convsWithUnread = data.conversations.map((c: any) => ({
+          ...c,
+          unreadCount: 0,
+        }))
+        setConversations(convsWithUnread)
         setLoadedConvs(true)
+        try {
+          localStorage.setItem('bharatchat-cached-conversations', JSON.stringify(convsWithUnread))
+        } catch (e) {}
 
         // Background prefetch top conversations so opening any chat is instantaneous (0ms)
         if (userId) {
@@ -98,7 +115,7 @@ export function ChatApp() {
       cancelled = true
       clearInterval(interval)
     }
-  }, [status, setConversations])
+  }, [status, userId, setConversations])
 
   // For mobile: keep mobileShowThread in sync whenever activeId changes
   useEffect(() => {
@@ -178,6 +195,7 @@ export function ChatApp() {
         <Sidebar
           currentUser={sidebarUser}
           onSelectConversation={() => setMobileShowThread(true)}
+          loadingConvs={!loadedConvs}
         />
       </div>
       <div className={`${mobileShowThread ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>

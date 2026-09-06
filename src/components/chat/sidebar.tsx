@@ -29,9 +29,10 @@ interface SidebarUser {
 interface SidebarProps {
   currentUser: SidebarUser
   onSelectConversation?: (id: string) => void
+  loadingConvs?: boolean
 }
 
-export function Sidebar({ currentUser, onSelectConversation }: SidebarProps) {
+export function Sidebar({ currentUser, onSelectConversation, loadingConvs }: SidebarProps) {
   const conversations = useChatStore((s) => s.conversations)
   const activeId = useChatStore((s) => s.activeConversationId)
   const setActive = useChatStore((s) => s.setActiveConversation)
@@ -192,18 +193,36 @@ export function Sidebar({ currentUser, onSelectConversation }: SidebarProps) {
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-2 space-y-0.5">
             {filtered.length === 0 ? (
-              <div className="text-center py-12 px-4">
-                <Users className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No conversations yet</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => setShowNew(true)}
-                >
-                  Start a new chat
-                </Button>
-              </div>
+              loadingConvs && !search ? (
+                <div className="p-1 space-y-1">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl animate-pulse">
+                      <div className="h-10 w-10 rounded-full bg-muted/65 flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3.5 bg-muted/70 rounded w-28" />
+                        <div className="h-2.5 bg-muted/50 rounded w-44" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 px-4">
+                  <Users className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {search ? 'No conversations found' : 'No conversations yet'}
+                  </p>
+                  {!search && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => setShowNew(true)}
+                    >
+                      Start a new chat
+                    </Button>
+                  )}
+                </div>
+              )
             ) : (
               filtered.map((c) => {
                 const isActive = c.id === activeId

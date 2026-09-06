@@ -12,10 +12,33 @@ export async function GET() {
     include: {
       conversation: {
         include: {
-          members: { include: { user: true } },
+          members: {
+            select: {
+              role: true,
+              userId: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  avatarColor: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
           messages: {
             orderBy: { createdAt: 'desc' },
             take: 1,
+            select: {
+              id: true,
+              content: true,
+              contentType: true,
+              encrypted: true,
+              senderId: true,
+              deletedAt: true,
+              createdAt: true,
+            },
           },
         },
       },
@@ -59,7 +82,14 @@ export async function GET() {
     }
   })
 
-  return NextResponse.json({ conversations })
+  return NextResponse.json(
+    { conversations },
+    {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=30',
+      },
+    }
+  )
 }
 
 // POST /api/conversations — create a new conversation (PRIVATE or GROUP)
