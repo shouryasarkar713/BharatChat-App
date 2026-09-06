@@ -386,9 +386,11 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       <main className="flex-1 flex items-center justify-center bg-background bg-mesh relative overflow-hidden">
         <div className="absolute inset-0 jaali-watermark pointer-events-none" aria-hidden="true" />
         <div className="text-center max-w-md p-8 relative z-10">
-          <div className="h-16 w-16 rounded-2xl bg-accent-foreground/10 mx-auto flex items-center justify-center mb-4 border border-accent-foreground/20">
-            <MessageSquare className="h-8 w-8 text-accent-foreground" />
-          </div>
+          <img
+            src="/icon-192.png"
+            alt="BharatChat"
+            className="h-16 w-16 rounded-2xl object-cover mx-auto mb-4 shadow-lg border border-primary/20"
+          />
           <h2 className="text-xl font-semibold text-foreground mb-1">Welcome to BharatChat</h2>
           <p className="text-sm text-muted-foreground">
             Select a conversation to start messaging, or create a new one. All messages are

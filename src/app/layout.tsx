@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   description: "Real-time chat application with private/group chats, presence, file sharing, E2E encryption, and message moderation.",
   keywords: ["chat", "real-time", "websocket", "socket.io", "e2e encryption", "Next.js"],
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon-192.png",
+    shortcut: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#E09115" },
     { media: "(prefers-color-scheme: dark)", color: "#1C1C1E" },

@@ -57,9 +57,11 @@ export function Sidebar({ currentUser, onSelectConversation }: SidebarProps) {
       <div className="p-4 border-b border-border/40 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center shadow-md shadow-primary/20 transform hover:rotate-3 transition-transform">
-              <MessageSquare className="h-5.5 w-5.5 text-primary-foreground" />
-            </div>
+            <img
+              src="/icon-192.png"
+              alt="BharatChat"
+              className="h-10 w-10 rounded-2xl object-cover shadow-md shadow-primary/20 transform hover:rotate-3 transition-transform border border-primary/20"
+            />
             <div>
               <h1 className="font-extrabold leading-tight tracking-wide text-md flex items-center select-none">
                 <span className="text-foreground">Bharat</span>

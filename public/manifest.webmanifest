@@ -4,8 +4,8 @@
   "description": "Real-time chat with end-to-end encryption",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#10b981",
+  "background_color": "#1C1C1E",
+  "theme_color": "#E09115",
   "icons": [
     {
       "src": "/icon-192.png",

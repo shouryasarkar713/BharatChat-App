@@ -97,9 +97,11 @@ export function AuthScreen() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="flex flex-col items-center mb-8">
-          <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 mb-4 transform hover:scale-105 transition-transform duration-200">
-            <MessageSquare className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <img
+            src="/icon-192.png"
+            alt="BharatChat"
+            className="h-16 w-16 rounded-2xl object-cover shadow-lg shadow-primary/20 mb-4 transform hover:scale-105 transition-transform duration-200 border border-primary/20"
+          />
           <h1 className="text-4xl font-extrabold tracking-tight text-foreground pb-1 flex items-center justify-center select-none">
             <span>Bharat</span>
             <svg className="h-[0.42em] w-[0.42em] text-primary fill-primary mx-[0.15em] self-center inline-block" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
