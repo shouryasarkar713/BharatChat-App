@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "383174758211",
+    "project_id": "bharatchat-2916f",
+    "storage_bucket": "bharatchat-2916f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:383174758211:android:1af701fc4f1e74444be9f6",
+        "android_client_info": {
+          "package_name": "com.bharatchat.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoYXl7PYNymO_oi03P046AwTt_Tx9ownA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
