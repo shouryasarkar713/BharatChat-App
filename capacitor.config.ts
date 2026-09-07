@@ -1,13 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
+const rawUrl = process.env.CAPACITOR_SERVER_URL?.trim()
+const serverUrl = rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) ? rawUrl : undefined
+
 const config: CapacitorConfig = {
   appId: 'com.bharatchat.app',
   appName: 'BharatChat',
   webDir: 'public',
   server: {
-    // Set to your deployed URL when building an APK for family distribution
-    // e.g. 'https://bharatchat-app.vercel.app'
-    url: process.env.CAPACITOR_SERVER_URL,
+    ...(serverUrl ? { url: serverUrl } : {}),
     cleartext: true,
   },
   plugins: {

@@ -43,12 +43,12 @@ jobs:
 
       - name: Sync Capacitor Android Project
         env:
-          CAPACITOR_SERVER_URL: ${{ github.event.inputs.server_url }}
+          CAPACITOR_SERVER_URL: ${{ inputs.server_url || '' }}
         run: |
           if [ -n "$CAPACITOR_SERVER_URL" ]; then
             echo "Building APK with custom server URL: $CAPACITOR_SERVER_URL"
           fi
-          npx cap sync android
+          npm run cap:sync -- android
 
       - name: Grant Execute Permission to Gradle Wrapper
         run: chmod +x android/gradlew
@@ -56,7 +56,7 @@ jobs:
       - name: Build Android Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
