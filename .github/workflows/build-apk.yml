@@ -64,11 +64,14 @@ jobs:
           retention-days: 30
 
       - name: Distribute to Firebase App Distribution
-        if: ${{ secrets.FIREBASE_TOKEN != '' && secrets.FIREBASE_APP_ID != '' }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         run: |
+          if [ -z "$FIREBASE_TOKEN" ] || [ -z "$FIREBASE_APP_ID" ]; then
+            echo "::warning::FIREBASE_TOKEN or FIREBASE_APP_ID secrets not found. Skipping Firebase upload."
+            exit 0
+          fi
           npx --yes firebase-tools appdistribution:distribute android/app/build/outputs/apk/debug/app-debug.apk \
             --app "$FIREBASE_APP_ID" \
             --groups "family" \
