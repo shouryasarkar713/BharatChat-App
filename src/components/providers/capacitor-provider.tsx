@@ -34,6 +34,12 @@ export function CapacitorProvider({ children }: { children: React.ReactNode }) {
         try {
           const { App } = await import('@capacitor/app')
           App.addListener('backButton', () => {
+            // If a modal or full-screen preview is open, dismiss it first without closing chat
+            if (typeof window !== 'undefined' && window.history.state?.lightbox) {
+              window.history.back()
+              return
+            }
+
             const store = useChatStore.getState()
             if (store.activeConversationId) {
               // Navigate back to the conversation list
