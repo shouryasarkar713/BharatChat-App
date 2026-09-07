@@ -32,10 +32,10 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Node Dependencies
@@ -43,11 +43,9 @@ jobs:
 
       - name: Sync Capacitor Android Project
         env:
-          CAPACITOR_SERVER_URL: ${{ inputs.server_url || '' }}
+          CAPACITOR_SERVER_URL: ${{ inputs.server_url }}
         run: |
-          if [ -n "$CAPACITOR_SERVER_URL" ]; then
-            echo "Building APK with custom server URL: $CAPACITOR_SERVER_URL"
-          fi
+          node -v
           npm run cap:sync -- android
 
       - name: Grant Execute Permission to Gradle Wrapper
