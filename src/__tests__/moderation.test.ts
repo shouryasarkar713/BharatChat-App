@@ -33,4 +33,21 @@ describe('moderateMessage', () => {
     expect(result.cleaned).toBe('**** this **** and that *****')
     expect(result.reason).toContain('Contains 3 blocked word(s)')
   })
+
+  it('should not falsely flag innocent words containing blocked substrings (Scunthorpe problem)', () => {
+    const result1 = moderateMessage('Charles Dickens wrote Great Expectations')
+    expect(result1.status).toBe('APPROVED')
+    expect(result1.cleaned).toBeUndefined()
+
+    const result2 = moderateMessage('I submitted the class assessment yesterday')
+    expect(result2.status).toBe('APPROVED')
+    expect(result2.cleaned).toBeUndefined()
+  })
+
+  it('should flag and censor common Hindi/Hinglish abusive terms', () => {
+    const result = moderateMessage('tu bada harami hai bhai')
+    expect(result.status).toBe('FLAGGED')
+    expect(result.cleaned).toBe('tu bada ****** hai bhai')
+    expect(result.reason).toContain('Contains 1 blocked word')
+  })
 })

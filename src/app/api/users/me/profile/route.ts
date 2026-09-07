@@ -37,7 +37,7 @@ export async function PATCH(req: Request) {
   // Username change requires uniqueness check
   if (data.username !== undefined) {
     const lowerUsername = data.username.toLowerCase()
-    if (lowerUsername !== user.name) {
+    if (lowerUsername !== user.username) {
       const existing = await db.user.findFirst({
         where: {
           username: lowerUsername,

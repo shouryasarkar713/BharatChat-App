@@ -18,8 +18,12 @@ export async function getSocket(userId: string): Promise<Socket> {
   connectingUserId = userId
 
   let socketUrl: string | undefined = process.env.NEXT_PUBLIC_SOCKET_URL
-  if (!socketUrl && typeof window !== 'undefined' && window.location.port === '3000') {
-    socketUrl = 'http://127.0.0.1:3003'
+  if (!socketUrl && typeof window !== 'undefined') {
+    const host = window.location.hostname
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.endsWith('.local')
+    if (isLocal) {
+      socketUrl = `${window.location.protocol}//${host}:3003`
+    }
   }
   socket = io(socketUrl, {
     path: '/',

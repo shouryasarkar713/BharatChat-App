@@ -4,6 +4,7 @@
 const BLOCKLIST = [
   'fuck', 'shit', 'bitch', 'asshole', 'dick', 'cunt', 'nigger', 'faggot',
   'retard', 'whore', 'slut',
+  'chutiya', 'madarchod', 'behenchod', 'bhosdike', 'harami', 'kamina',
 ]
 
 export interface ModerationResult {
@@ -19,16 +20,21 @@ export function moderateMessage(content: string): ModerationResult {
   if (content.length > 8000) {
     return { status: 'BLOCKED', reason: 'Message exceeds 8000 chars' }
   }
-  const lower = content.toLowerCase()
-  const hits = BLOCKLIST.filter((w) => lower.includes(w))
+
+  const hits: string[] = []
+  let cleaned = content
+
+  // Use word boundaries (\b) so innocent substrings (e.g. "Charles Dickens", "assessment") are not falsely flagged
+  for (const w of BLOCKLIST) {
+    const re = new RegExp(`\\b${w}\\b`, 'gi')
+    if (re.test(content)) {
+      hits.push(w)
+      cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), '*'.repeat(w.length))
+    }
+  }
+
   if (hits.length === 0) return { status: 'APPROVED' }
 
-  // Censor the words but still let the message through with FLAGGED status.
-  let cleaned = content
-  for (const w of hits) {
-    const re = new RegExp(w, 'gi')
-    cleaned = cleaned.replace(re, '*'.repeat(w.length))
-  }
   return {
     status: hits.length >= 3 ? 'BLOCKED' : 'FLAGGED',
     reason: `Contains ${hits.length} blocked word(s): ${hits.join(', ')}`,

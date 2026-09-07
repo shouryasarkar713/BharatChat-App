@@ -288,6 +288,10 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !activeId) return
+    if (file.size > 4.5 * 1024 * 1024) {
+      toast.error('File too large', { description: 'Maximum upload size is 4.5MB' })
+      return
+    }
     e.target.value = ''
     setUploading(true)
     try {
@@ -821,7 +825,7 @@ function MessageList({
         const showAvatar = !isMe && (!prevMsg || prevMsg.senderId !== m.senderId)
 
         const displayContent = m.encrypted
-          ? decrypted[`${conversationId}:${m.id}`] || 'Decrypting...'
+          ? decrypted[`${conversationId}:${m.id}`] || (m.tempId ? decrypted[`${conversationId}:${m.tempId}`] : undefined) || 'Decrypting...'
           : m.content
 
         return (

@@ -120,12 +120,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const exists = list.some(
         (x) => x.id === m.id || (m.tempId && x.tempId === m.tempId)
       )
+
+      // If this was an optimistic message and plaintext is cached under tempId,
+      // copy it to canonical id so sender never sees "Decrypting..." flicker
+      let updatedDecrypted = s.decrypted
+      if (m.tempId && s.decrypted[`${m.conversationId}:${m.tempId}`] && !s.decrypted[`${m.conversationId}:${m.id}`]) {
+        updatedDecrypted = {
+          ...s.decrypted,
+          [`${m.conversationId}:${m.id}`]: s.decrypted[`${m.conversationId}:${m.tempId}`],
+        }
+      }
+
       if (exists) {
         // Replace the optimistic message with the canonical one
         const replaced = list.map((x) =>
           x.id === m.id || (m.tempId && x.tempId === m.tempId) ? m : x
         )
         return {
+          decrypted: updatedDecrypted,
           messagesByConversation: {
             ...s.messagesByConversation,
             [m.conversationId]: replaced,
@@ -133,6 +145,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       }
       return {
+        decrypted: updatedDecrypted,
         messagesByConversation: {
           ...s.messagesByConversation,
           [m.conversationId]: [...list, m],
@@ -145,10 +158,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const list = s.messagesByConversation[conversationId] || []
       const existingIds = new Set(list.map((m) => m.id))
       const toPrepend = msgs.filter((m) => !existingIds.has(m.id))
+      const combined = [...toPrepend, ...list].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
       return {
         messagesByConversation: {
           ...s.messagesByConversation,
-          [conversationId]: [...toPrepend, ...list],
+          [conversationId]: combined,
         },
       }
     }),

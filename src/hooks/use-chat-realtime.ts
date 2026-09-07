@@ -64,7 +64,32 @@ export function useChatRealtime() {
 
       // Wire up event handlers WITHOUT removing the socket.ts auto-join handler.
       // We use named wrappers + removeListener so re-renders don't stack handlers.
-      const onConnect = () => useChatStore.getState().setSocketConnected(true)
+      const onConnect = () => {
+        const store = useChatStore.getState()
+        store.setSocketConnected(true)
+
+        // Resync on connection: refresh conversation list and active chat messages
+        fetch('/api/conversations')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.conversations) store.setConversations(data.conversations)
+          })
+          .catch(() => {})
+
+        const currentActiveId = store.activeConversationId
+        if (currentActiveId) {
+          fetch(`/api/conversations/${currentActiveId}/messages?limit=50`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.messages) {
+                const msgs = data.messages.reverse()
+                store.setMessages(currentActiveId, msgs)
+                ensureDecrypted(currentActiveId, msgs, userId).catch(() => {})
+              }
+            })
+            .catch(() => {})
+        }
+      }
       const onDisconnect = () => useChatStore.getState().setSocketConnected(false)
       const onMessageNew = (msg: any) => {
         const store = useChatStore.getState()
@@ -77,6 +102,14 @@ export function useChatRealtime() {
             lastMessage: msg,
             updatedAt: msg.createdAt,
           })
+        } else {
+          // Brand new conversation created by a peer: reload conversations into sidebar
+          fetch('/api/conversations')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.conversations) store.setConversations(data.conversations)
+            })
+            .catch(() => {})
         }
         if (isActive) {
           sock.emit('read:receipt', { conversationId: msg.conversationId, messageId: msg.id })

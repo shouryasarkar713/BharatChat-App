@@ -36,6 +36,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
+    const MAX_FILE_SIZE = 4.5 * 1024 * 1024 // 4.5 MB serverless limit
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'File exceeds maximum upload limit of 4.5MB' },
+        { status: 413 }
+      )
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
