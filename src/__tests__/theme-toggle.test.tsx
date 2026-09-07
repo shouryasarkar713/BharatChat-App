@@ -1,4 +1,5 @@
 import React from 'react'
+import '@testing-library/jest-dom'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { ThemeToggle } from '../components/chat/theme-toggle'
 import { useTheme } from 'next-themes'

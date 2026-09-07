@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar } from './avatar'
 import { ArrowLeft, Search, Loader2, MessageSquare, FileText, Mic, Image as ImageIcon } from 'lucide-react'
 import { useChatStore } from '@/store/chat-store'
-import { decryptMessage, getCachedAesKey, cacheAesKey } from '@/lib/crypto'
+import { decryptMessage, getCachedAesKey, cacheAesKey, getOrEstablishConversationAesKey } from '@/lib/crypto'
 import { format, isToday, isYesterday } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -193,15 +193,7 @@ async function performSearch(
     const hasEncrypted = msgs.some((m: any) => m.encrypted && m.contentType === 'TEXT')
     if (hasEncrypted) {
       try {
-        aesKey = await getCachedAesKey(conv.id)
-        if (!aesKey) {
-          // Derive the conversation key (same logic as chat-thread.ts)
-          const seed = conv.id + ':pulsechat-e2e-seed-v1'
-          const seedBytes = new TextEncoder().encode(seed)
-          const hashBuf = await crypto.subtle.digest('SHA-256', seedBytes)
-          aesKey = await crypto.subtle.importKey('raw', hashBuf, { name: 'AES-GCM' }, true, ['decrypt'])
-          await cacheAesKey(conv.id, aesKey)
-        }
+        aesKey = await getOrEstablishConversationAesKey(conv.id, currentUserId)
       } catch {}
     }
 

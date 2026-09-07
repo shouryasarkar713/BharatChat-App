@@ -24,6 +24,7 @@ import {
   decryptMessage,
   getCachedAesKey,
   cacheAesKey,
+  getOrEstablishConversationAesKey,
 } from '@/lib/crypto'
 import { moderateMessage } from '@/lib/moderation'
 
@@ -96,20 +97,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   )
 
   async function initConversationKey(convId: string) {
-    let key = await getCachedAesKey(convId)
-    if (!key) {
-      // Generate a new key for this conversation (the demo: all clients must derive the same key)
-      // For a true E2E flow you'd wrap this with each member's RSA public key. Here we use a
-      // deterministic key derived from the conversation id so all members can decrypt.
-      const seed = convId + ':pulsechat-e2e-seed-v1'
-      const seedBytes = new TextEncoder().encode(seed)
-      const hashBuf = await crypto.subtle.digest('SHA-256', seedBytes)
-      key = await crypto.subtle.importKey('raw', hashBuf, { name: 'AES-GCM' }, true, [
-        'encrypt',
-        'decrypt',
-      ])
-      await cacheAesKey(convId, key)
-    }
+    await getOrEstablishConversationAesKey(convId, currentUserId)
     // Decrypt any pending cached messages immediately
     await ensureDecrypted(convId, useChatStore.getState().messagesByConversation[convId] || [], currentUserId)
   }

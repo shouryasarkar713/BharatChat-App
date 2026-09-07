@@ -5,7 +5,14 @@ import { useSession } from 'next-auth/react'
 import { getSocket, disconnectSocket, getExistingSocket } from '@/lib/socket'
 import { useChatStore } from '@/store/chat-store'
 import { toast } from 'sonner'
-import { decryptMessage, getCachedAesKey, cacheAesKey, getOrCreateRsaKeyPair, exportPublicKeyB64 } from '@/lib/crypto'
+import {
+  decryptMessage,
+  getCachedAesKey,
+  cacheAesKey,
+  getOrCreateRsaKeyPair,
+  exportPublicKeyB64,
+  getOrEstablishConversationAesKey,
+} from '@/lib/crypto'
 
 // Use a ref-based guard so StrictMode double-invocation doesn't break us
 let activeUserId: string | null = null
@@ -168,20 +175,13 @@ export function useChatRealtime() {
 }
 
 // Decrypt all encrypted messages in a conversation in parallel with a single store update
-export async function ensureDecrypted(conversationId: string, messages: any[], _currentUserId: string) {
+export async function ensureDecrypted(conversationId: string, messages: any[], currentUserId: string) {
   let aesKey = await getCachedAesKey(conversationId)
   if (!aesKey) {
     try {
-      const seed = conversationId + ':pulsechat-e2e-seed-v1'
-      const seedBytes = new TextEncoder().encode(seed)
-      const hashBuf = await crypto.subtle.digest('SHA-256', seedBytes)
-      aesKey = await crypto.subtle.importKey('raw', hashBuf, { name: 'AES-GCM' }, true, [
-        'encrypt',
-        'decrypt',
-      ])
-      await cacheAesKey(conversationId, aesKey)
+      aesKey = await getOrEstablishConversationAesKey(conversationId, currentUserId)
     } catch (e) {
-      console.warn('Failed to derive AES key for conversation', e)
+      console.warn('Failed to obtain AES key for conversation', e)
       return
     }
   }

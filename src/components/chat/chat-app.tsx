@@ -7,6 +7,7 @@ import { ChatThread } from './chat-thread'
 import { useChatRealtime, prefetchConversation } from '@/hooks/use-chat-realtime'
 import { useChatStore } from '@/store/chat-store'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { getOrCreateRsaKeyPair } from '@/lib/crypto'
 import { Loader2 } from 'lucide-react'
 
 export function ChatApp() {
@@ -42,9 +43,12 @@ export function ChatApp() {
     }
   }, [setShowProfanity])
 
-  // Persist current user to store
+  // Persist current user to store and ensure device RSA-OAEP keypair is active
   useEffect(() => {
     if (!userId || !userName) return
+    // Ensure device RSA keypair exists in IndexedDB and public key is synced
+    getOrCreateRsaKeyPair(userId).catch(() => {})
+
     // Fetch user details
     fetch('/api/users/me').then(async (r) => {
       if (r.ok) {
