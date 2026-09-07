@@ -14,9 +14,11 @@ interface VoiceRecorderProps {
     mimeType: string
     contentType: string
     duration: number
+    encrypted?: boolean
   }) => Promise<void>
   disabled?: boolean
   onStateChange?: (state: RecorderState) => void
+  onUploadVoice?: (blob: Blob, filename: string) => Promise<{ url: string; encrypted: boolean; size: number } | null>
 }
 
 type RecorderState = 'idle' | 'recording' | 'recorded' | 'uploading'
@@ -137,16 +139,37 @@ export function VoiceRecorder({ onSend, disabled, onStateChange }: VoiceRecorder
     updateState('uploading')
     try {
       const ext = audioBlob.type.includes('webm') ? 'webm' : audioBlob.type.includes('mp4') ? 'mp4' : 'ogg'
-      const file = new File([audioBlob], `voice-${Date.now()}.${ext}`, { type: audioBlob.type })
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error('Upload failed', { description: data.error })
-        updateState('recorded')
-        return
+      const filename = `voice-${Date.now()}.${ext}`
+      let data: any
+
+      if (onUploadVoice) {
+        const uploadResult = await onUploadVoice(audioBlob, filename)
+        if (!uploadResult) {
+          toast.error('Voice encryption failed')
+          updateState('recorded')
+          return
+        }
+        data = {
+          url: uploadResult.url,
+          name: filename,
+          size: uploadResult.size,
+          mimeType: audioBlob.type || 'audio/webm',
+          contentType: 'AUDIO',
+          encrypted: uploadResult.encrypted,
+        }
+      } else {
+        const file = new File([audioBlob], filename, { type: audioBlob.type })
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/upload', { method: 'POST', body: fd })
+        data = await res.json()
+        if (!res.ok) {
+          toast.error('Upload failed', { description: data.error })
+          updateState('recorded')
+          return
+        }
       }
+
       await onSend({
         ...data,
         contentType: 'AUDIO',

@@ -283,7 +283,7 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     // Verify the message exists and belongs to the user
     const msg = await db.message.findUnique({
       where: { id: messageId },
-      select: { id: true, senderId: true, conversationId: true, deletedAt: true },
+      select: { id: true, senderId: true, conversationId: true, deletedAt: true, attachment: true },
     }).catch(() => null)
     if (!msg || msg.conversationId !== conversationId) {
       socket.emit('error', { message: 'message not found' })
@@ -313,9 +313,28 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       })
       return
     }
+
+    // Hard-purge: If message had an uploaded binary file, remove from db.upload
+    if (msg.attachment) {
+      try {
+        const att = JSON.parse(msg.attachment)
+        if (att?.url && typeof att.url === 'string' && att.url.startsWith('/api/uploads/')) {
+          const fileId = att.url.replace('/api/uploads/', '')
+          if (fileId) {
+            await db.upload.delete({ where: { id: fileId } }).catch(() => {})
+          }
+        }
+      } catch {}
+    }
+
+    // Wipe content and attachment completely from the database
     await db.message.update({
       where: { id: messageId },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        content: '',
+        attachment: null,
+      },
     })
     io.to(`conv:${conversationId}`).emit('message:deleted', {
       conversationId,

@@ -6,7 +6,7 @@ import { Avatar } from './avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText, Flame, Check, Timer } from 'lucide-react'
+import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText, Flame, Check, Timer, Loader2 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getSocket } from '@/lib/socket'
 import { format, isSameDay } from 'date-fns'
@@ -23,6 +23,8 @@ import {
   importAesKeyB64,
   encryptMessage,
   decryptMessage,
+  encryptBinary,
+  decryptBinary,
   getCachedAesKey,
   cacheAesKey,
   getOrEstablishConversationAesKey,
@@ -276,15 +278,36 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
     e.target.value = ''
     setUploading(true)
     try {
+      const rawBytes = await file.arrayBuffer()
+      let fileToSend: Blob = file
+      let isFileEncrypted = false
+
+      if (e2eEnabled.current) {
+        const key = await getOrEstablishConversationAesKey(activeId, currentUserId)
+        if (key) {
+          const encryptedBuffer = await encryptBinary(key, rawBytes)
+          fileToSend = new Blob([encryptedBuffer], { type: 'application/octet-stream' })
+          isFileEncrypted = true
+        }
+      }
+
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', fileToSend, file.name)
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) {
         toast.error('Upload failed', { description: data.error })
         return
       }
-      const attachmentData = burnDuration ? { ...data, burnAfterSeconds: burnDuration } : data
+
+      const attachmentData = {
+        ...data,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type || 'application/octet-stream',
+        encrypted: isFileEncrypted,
+        ...(burnDuration ? { burnAfterSeconds: burnDuration } : {}),
+      }
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
       const tempMsg: any = {
         id: tempId,
@@ -314,14 +337,42 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         attachment: attachmentData,
         tempId,
       })
-      toast.success('File shared')
+      toast.success(isFileEncrypted ? 'Encrypted file shared' : 'File shared')
     } catch (e) {
       toast.error('Upload failed')
     }
     setUploading(false)
   }
 
-  // Send a voice message (already uploaded by the VoiceRecorder component)
+  // Encrypt and upload voice notes client-side
+  async function handleUploadVoice(blob: Blob, filename: string) {
+    if (!activeId) return null
+    try {
+      const rawBytes = await blob.arrayBuffer()
+      let blobToSend: Blob = blob
+      let isEncrypted = false
+
+      if (e2eEnabled.current) {
+        const key = await getOrEstablishConversationAesKey(activeId, currentUserId)
+        if (key) {
+          const enc = await encryptBinary(key, rawBytes)
+          blobToSend = new Blob([enc], { type: 'application/octet-stream' })
+          isEncrypted = true
+        }
+      }
+
+      const fd = new FormData()
+      fd.append('file', blobToSend, filename)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) return null
+      return { url: data.url, encrypted: isEncrypted, size: blob.size }
+    } catch {
+      return null
+    }
+  }
+
+  // Send a voice message (already encrypted & uploaded by the VoiceRecorder component)
   async function handleSendVoice(attachment: any) {
     if (!activeId) return
     const attachmentData = burnDuration ? { ...attachment, burnAfterSeconds: burnDuration } : attachment
@@ -669,6 +720,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
             onSend={handleSendVoice}
             disabled={sending || uploading}
             onStateChange={setVoiceState}
+            onUploadVoice={handleUploadVoice}
           />
 
           {!isVoiceActive && (
@@ -761,6 +813,8 @@ function MessageList({
             <MessageBubble
               message={m}
               isMe={isMe}
+              conversationId={conversationId}
+              currentUserId={currentUserId}
               displayContent={displayContent}
               showSender={showSender}
               showAvatar={showAvatar}
@@ -777,6 +831,8 @@ function MessageList({
 function MessageBubble({
   message,
   isMe,
+  conversationId,
+  currentUserId,
   displayContent,
   showSender,
   showAvatar,
@@ -785,6 +841,8 @@ function MessageBubble({
 }: {
   message: any
   isMe: boolean
+  conversationId: string
+  currentUserId: string
   displayContent: string
   showSender: boolean
   showAvatar: boolean
@@ -920,6 +978,8 @@ function MessageBubble({
               <AttachmentView
                 attachment={message.attachment}
                 isMe={isMe}
+                conversationId={conversationId}
+                currentUserId={currentUserId}
                 messageId={message.id}
                 onDeleteMessage={onDeleteMessage}
                 onPreviewImage={onPreviewImage}
@@ -999,25 +1059,107 @@ function BurnCountdownBadge({
   )
 }
 
+const decryptedAttachmentCache = new Map<string, string>()
+
+function useDecryptedAttachment(attachment: any, conversationId: string, currentUserId: string) {
+  const [url, setUrl] = useState<string>(() => {
+    if (!attachment?.url) return ''
+    if (!attachment.encrypted) return attachment.url
+    return decryptedAttachmentCache.get(attachment.url) || ''
+  })
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (!attachment?.url) return false
+    if (!attachment.encrypted) return false
+    return !decryptedAttachmentCache.has(attachment.url)
+  })
+
+  useEffect(() => {
+    if (!attachment?.url) return
+    if (!attachment.encrypted) {
+      setUrl(attachment.url)
+      setLoading(false)
+      return
+    }
+
+    if (decryptedAttachmentCache.has(attachment.url)) {
+      setUrl(decryptedAttachmentCache.get(attachment.url)!)
+      setLoading(false)
+      return
+    }
+
+    let isMounted = true
+    setLoading(true)
+
+    ;(async () => {
+      try {
+        const key = await getOrEstablishConversationAesKey(conversationId, currentUserId)
+        if (!key) throw new Error('No encryption key')
+
+        const res = await fetch(attachment.url)
+        if (!res.ok) throw new Error('Failed to fetch encrypted attachment')
+        const encBytes = await res.arrayBuffer()
+        const decBytes = await decryptBinary(key, encBytes)
+        const blob = new Blob([decBytes], { type: attachment.mimeType || 'application/octet-stream' })
+        const objectUrl = URL.createObjectURL(blob)
+
+        decryptedAttachmentCache.set(attachment.url, objectUrl)
+        if (isMounted) {
+          setUrl(objectUrl)
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Failed to decrypt attachment:', err)
+        if (isMounted) {
+          setUrl(attachment.url)
+          setLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      isMounted = false
+    }
+  }, [attachment?.url, attachment?.encrypted, attachment?.mimeType, conversationId, currentUserId])
+
+  return { url, loading }
+}
+
 function AttachmentView({
   attachment,
   isMe,
+  conversationId,
+  currentUserId,
   messageId,
   onDeleteMessage,
   onPreviewImage,
 }: {
   attachment: any
   isMe: boolean
+  conversationId: string
+  currentUserId: string
   messageId?: string
   onDeleteMessage?: (messageId: string) => void
   onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
+  const { url: mediaUrl, loading } = useDecryptedAttachment(attachment, conversationId, currentUserId)
+
   const handleDownloadFile = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      const downloadUrl = attachment.url.includes('?')
-        ? `${attachment.url}&download=1`
-        : `${attachment.url}?download=1`
+      if (attachment.encrypted && mediaUrl) {
+        const a = document.createElement('a')
+        a.href = mediaUrl
+        a.download = attachment.name || 'document'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        toast.success(`Downloading ${attachment.name}`)
+        return
+      }
+
+      const downloadUrl = (mediaUrl || attachment.url).includes('?')
+        ? `${mediaUrl || attachment.url}&download=1`
+        : `${mediaUrl || attachment.url}?download=1`
       const res = await fetch(downloadUrl)
       if (!res.ok) throw new Error('Download failed')
       const blob = await res.blob()
@@ -1032,13 +1174,22 @@ function AttachmentView({
       toast.success(`Downloading ${attachment.name}`)
     } catch {
       const a = document.createElement('a')
-      a.href = attachment.url.includes('?') ? `${attachment.url}&download=1` : `${attachment.url}?download=1`
+      a.href = mediaUrl || (attachment.url.includes('?') ? `${attachment.url}&download=1` : `${attachment.url}?download=1`)
       a.download = attachment.name || 'document'
       a.target = '_blank'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-card/60 text-muted-foreground text-xs animate-pulse">
+        <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" />
+        <span>Decrypting file...</span>
+      </div>
+    )
   }
 
   if (attachment.contentType === 'IMAGE' || attachment.mimeType?.startsWith('image/')) {
@@ -1049,12 +1200,12 @@ function AttachmentView({
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation()
-            onPreviewImage?.({ url: attachment.url, name: attachment.name, messageId, isMe })
+            onPreviewImage?.({ url: mediaUrl, name: attachment.name, messageId, isMe })
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.stopPropagation()
-              onPreviewImage?.({ url: attachment.url, name: attachment.name, messageId, isMe })
+              onPreviewImage?.({ url: mediaUrl, name: attachment.name, messageId, isMe })
             }
           }}
           className="block cursor-pointer"
@@ -1062,7 +1213,7 @@ function AttachmentView({
         >
           <div className="relative overflow-hidden rounded-xl">
             <img
-              src={attachment.url}
+              src={mediaUrl}
               alt={attachment.name}
               className="max-w-60 max-h-60 rounded-xl object-cover hover:scale-[1.02] transition-transform duration-200"
             />
@@ -1090,9 +1241,17 @@ function AttachmentView({
           </button>
         )}
 
-        <span className={cn('text-[11px] block mt-1', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-          {attachment.name} · {(attachment.size / 1024).toFixed(1)} KB
-        </span>
+        <div className="flex items-center gap-1.5 mt-1">
+          {attachment.encrypted && (
+            <span className="inline-flex items-center text-[10px] font-medium text-emerald-500 gap-0.5" title="End-to-end encrypted">
+              <ShieldCheck className="h-3 w-3" />
+              <span>E2EE</span>
+            </span>
+          )}
+          <span className={cn('text-[11px]', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+            {attachment.name} · {(attachment.size / 1024).toFixed(1)} KB
+          </span>
+        </div>
       </div>
     )
   }
@@ -1100,7 +1259,7 @@ function AttachmentView({
   if (attachment.contentType === 'VIDEO' || attachment.mimeType?.startsWith('video/')) {
     return (
       <div className="relative">
-        <video src={attachment.url} controls className="max-w-64 max-h-64 rounded-lg" />
+        <video src={mediaUrl} controls className="max-w-64 max-h-64 rounded-lg" />
         {isMe && messageId && onDeleteMessage && (
           <button
             type="button"
@@ -1115,9 +1274,17 @@ function AttachmentView({
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
-        <span className={cn('text-[11px] block mt-1', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-          {attachment.name}
-        </span>
+        <div className="flex items-center gap-1.5 mt-1">
+          {attachment.encrypted && (
+            <span className="inline-flex items-center text-[10px] font-medium text-emerald-500 gap-0.5" title="End-to-end encrypted">
+              <ShieldCheck className="h-3 w-3" />
+              <span>E2EE</span>
+            </span>
+          )}
+          <span className={cn('text-[11px]', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+            {attachment.name}
+          </span>
+        </div>
       </div>
     )
   }
@@ -1132,11 +1299,19 @@ function AttachmentView({
           )}>
             <Mic className={cn('h-4 w-4', isMe ? 'text-primary-foreground' : 'text-primary')} />
           </div>
-          <audio src={attachment.url} controls className="flex-1 h-8 min-w-0" style={{ maxWidth: '220px' }} />
+          <audio src={mediaUrl} controls className="flex-1 h-8 min-w-0" style={{ maxWidth: '220px' }} />
         </div>
-        <span className={cn('text-[11px]', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-          Voice message{attachment.duration ? ` · ${Math.floor(attachment.duration / 60)}:${(attachment.duration % 60).toString().padStart(2, '0')}` : ''}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {attachment.encrypted && (
+            <span className="inline-flex items-center text-[10px] font-medium text-emerald-500 gap-0.5" title="End-to-end encrypted">
+              <ShieldCheck className="h-3 w-3" />
+              <span>E2EE</span>
+            </span>
+          )}
+          <span className={cn('text-[11px]', isMe ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+            Voice message{attachment.duration ? ` · ${Math.floor(attachment.duration / 60)}:${(attachment.duration % 60).toString().padStart(2, '0')}` : ''}
+          </span>
+        </div>
       </div>
     )
   }
@@ -1160,7 +1335,12 @@ function AttachmentView({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold truncate leading-tight">{attachment.name}</p>
+        <div className="flex items-center gap-1">
+          {attachment.encrypted && (
+            <ShieldCheck className="h-3 w-3 text-emerald-500 inline-block flex-shrink-0" title="End-to-end encrypted document" />
+          )}
+          <p className="text-xs font-semibold truncate leading-tight">{attachment.name}</p>
+        </div>
         <p className={cn('text-[10px] mt-0.5', isMe ? 'text-primary-foreground/75' : 'text-muted-foreground')}>
           {(attachment.size / 1024).toFixed(1)} KB
         </p>
@@ -1242,6 +1422,17 @@ function LightboxModal({
 
   const handleDownload = async () => {
     try {
+      if (previewImage.url.startsWith('blob:')) {
+        const a = document.createElement('a')
+        a.href = previewImage.url
+        a.download = previewImage.name || 'image'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        toast.success('Image downloaded')
+        return
+      }
+
       const downloadUrl = previewImage.url.includes('?')
         ? `${previewImage.url}&download=1`
         : `${previewImage.url}?download=1`

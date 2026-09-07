@@ -14,7 +14,7 @@ export async function DELETE(
 
   const message = await db.message.findUnique({
     where: { id },
-    select: { id: true, senderId: true, conversationId: true, deletedAt: true },
+    select: { id: true, senderId: true, conversationId: true, deletedAt: true, attachment: true },
   })
 
   if (!message) {
@@ -40,9 +40,27 @@ export async function DELETE(
     return NextResponse.json({ ok: true, alreadyDeleted: true })
   }
 
+  // Hard-purge: If message had an uploaded binary file, remove from db.upload
+  if (message.attachment) {
+    try {
+      const att = JSON.parse(message.attachment)
+      if (att?.url && typeof att.url === 'string' && att.url.startsWith('/api/uploads/')) {
+        const fileId = att.url.replace('/api/uploads/', '')
+        if (fileId) {
+          await db.upload.delete({ where: { id: fileId } }).catch(() => {})
+        }
+      }
+    } catch {}
+  }
+
+  // Wipe content and attachment completely from the database
   await db.message.update({
     where: { id },
-    data: { deletedAt: new Date() },
+    data: {
+      deletedAt: new Date(),
+      content: '',
+      attachment: null,
+    },
   })
 
   return NextResponse.json({ ok: true, deletedAt: new Date().toISOString() })

@@ -189,6 +189,53 @@ export async function decryptMessage(aesKey: CryptoKey, packedB64: string): Prom
   return new TextDecoder().decode(pt)
 }
 
+/**
+ * Encrypt arbitrary binary data (ArrayBuffer or TypedArray) with AES-GCM.
+ * Prepends a 12-byte random IV directly to the ciphertext.
+ * Returns an ArrayBuffer containing [12 bytes IV || Ciphertext].
+ */
+export async function encryptBinary(
+  aesKey: CryptoKey,
+  data: BufferSource
+): Promise<ArrayBuffer> {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    data
+  )
+  const combined = new Uint8Array(iv.byteLength + ciphertext.byteLength)
+  combined.set(iv, 0)
+  combined.set(new Uint8Array(ciphertext), iv.byteLength)
+  return combined.buffer.slice(combined.byteOffset, combined.byteOffset + combined.byteLength)
+}
+
+/**
+ * Decrypt a binary buffer containing [12 bytes IV || Ciphertext] with AES-GCM.
+ * Returns the original plaintext ArrayBuffer.
+ */
+export async function decryptBinary(
+  aesKey: CryptoKey,
+  packedBuffer: BufferSource
+): Promise<ArrayBuffer> {
+  const bytes = packedBuffer instanceof Uint8Array
+    ? packedBuffer
+    : new Uint8Array(
+        packedBuffer instanceof ArrayBuffer
+          ? packedBuffer
+          : (packedBuffer as ArrayBufferView).buffer,
+        (packedBuffer as ArrayBufferView).byteOffset || 0,
+        packedBuffer.byteLength
+      )
+  const iv = bytes.slice(0, 12)
+  const ciphertext = bytes.slice(12)
+  return crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    ciphertext
+  )
+}
+
 // Cache unwrapped conversation AES keys in memory + IndexedDB
 const aesKeyCache = new Map<string, CryptoKey>()
 

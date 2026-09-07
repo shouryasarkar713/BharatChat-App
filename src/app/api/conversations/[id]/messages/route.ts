@@ -52,20 +52,70 @@ export async function GET(
     data: { lastReadAt: new Date() },
   }).catch(() => {})
 
-  return NextResponse.json({
-    messages: items.map((m) => ({
+  // Check for any expired burn-after-reading messages that expired while offline
+  const now = Date.now()
+  const expiredToPurge: string[] = []
+  const filesToPurge: string[] = []
+
+  const mappedMessages = items.map((m) => {
+    let attachmentObj: any = null
+    try {
+      if (m.attachment) attachmentObj = JSON.parse(m.attachment)
+    } catch {}
+
+    const isBurn = attachmentObj?.burnAfterSeconds && typeof attachmentObj.burnAfterSeconds === 'number'
+    const isExpired = isBurn && (now - new Date(m.createdAt).getTime() > attachmentObj.burnAfterSeconds * 1000)
+
+    if (isExpired && !m.deletedAt) {
+      expiredToPurge.push(m.id)
+      if (attachmentObj?.url && typeof attachmentObj.url === 'string' && attachmentObj.url.startsWith('/api/uploads/')) {
+        filesToPurge.push(attachmentObj.url.replace('/api/uploads/', ''))
+      }
+      return {
+        id: m.id,
+        conversationId: m.conversationId,
+        senderId: m.senderId,
+        sender: m.sender,
+        content: '',
+        contentType: m.contentType,
+        encrypted: m.encrypted,
+        moderation: m.moderation,
+        attachment: null,
+        deletedAt: new Date().toISOString(),
+        createdAt: m.createdAt,
+      }
+    }
+
+    return {
       id: m.id,
       conversationId: m.conversationId,
       senderId: m.senderId,
       sender: m.sender,
-      content: m.content,
+      content: m.deletedAt ? '' : m.content,
       contentType: m.contentType,
       encrypted: m.encrypted,
       moderation: m.moderation,
-      attachment: m.attachment ? JSON.parse(m.attachment) : null,
+      attachment: m.deletedAt ? null : attachmentObj,
       deletedAt: m.deletedAt,
       createdAt: m.createdAt,
-    })),
+    }
+  })
+
+  // Asynchronously wipe expired messages from DB
+  if (expiredToPurge.length > 0) {
+    db.message.updateMany({
+      where: { id: { in: expiredToPurge } },
+      data: { deletedAt: new Date(), content: '', attachment: null },
+    }).catch(() => {})
+  }
+  if (filesToPurge.length > 0) {
+    db.upload.deleteMany({
+      where: { id: { in: filesToPurge } },
+    }).catch(() => {})
+  }
+
+  return NextResponse.json({
+    messages: mappedMessages,
     nextCursor,
   })
 }
