@@ -314,10 +314,14 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       return
     }
 
+    let wasBurn = false
     // Hard-purge: If message had an uploaded binary file, remove from db.upload
     if (msg.attachment) {
       try {
         const att = JSON.parse(msg.attachment)
+        if (att?.burnAfterSeconds) {
+          wasBurn = true
+        }
         if (att?.url && typeof att.url === 'string' && att.url.startsWith('/api/uploads/')) {
           const fileId = att.url.replace('/api/uploads/', '')
           if (fileId) {
@@ -340,6 +344,7 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       conversationId,
       messageId,
       deletedAt: new Date().toISOString(),
+      wasBurn,
     })
   })
 

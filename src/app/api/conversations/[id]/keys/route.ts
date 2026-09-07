@@ -53,16 +53,21 @@ export async function GET(
 
   await ensureConversationKeyTableExists()
 
-  // Fetch caller's wrapped key
+  // Fetch caller's wrapped key & check which members already have a key
   let callerKey: string | null = null
+  let existingKeysSet = new Set<string>()
   try {
-    const rows = await db.$queryRawUnsafe<{ encryptedKey: string }[]>(
-      `SELECT "encryptedKey" FROM "ConversationKey" WHERE "conversationId" = $1 AND "userId" = $2 LIMIT 1`,
-      id,
-      user.id
+    const rows = await db.$queryRawUnsafe<{ userId: string; encryptedKey: string }[]>(
+      `SELECT "userId", "encryptedKey" FROM "ConversationKey" WHERE "conversationId" = $1`,
+      id
     )
     if (rows && rows.length > 0) {
-      callerKey = rows[0].encryptedKey
+      for (const row of rows) {
+        existingKeysSet.add(row.userId)
+        if (row.userId === user.id) {
+          callerKey = row.encryptedKey
+        }
+      }
     }
   } catch {}
 
@@ -70,6 +75,7 @@ export async function GET(
     userId: m.user.id,
     name: m.user.name,
     publicKey: m.user.publicKey,
+    hasKey: existingKeysSet.has(m.user.id),
   }))
 
   return NextResponse.json({

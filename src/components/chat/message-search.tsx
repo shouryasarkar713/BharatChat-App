@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar } from './avatar'
 import { ArrowLeft, Search, Loader2, MessageSquare, FileText, Mic, Image as ImageIcon } from 'lucide-react'
 import { useChatStore } from '@/store/chat-store'
-import { decryptMessage, getCachedAesKey, cacheAesKey, getOrEstablishConversationAesKey } from '@/lib/crypto'
+import { decryptMessage, decryptMessageWithFallback, getCachedAesKey, cacheAesKey, getOrEstablishConversationAesKey } from '@/lib/crypto'
 import { format, isToday, isYesterday } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -198,6 +198,10 @@ async function performSearch(
     }
 
     for (const m of msgs) {
+      if (m.deletedAt || (m as any).wasBurn || (!m.content && !m.attachment?.name)) {
+        continue
+      }
+
       let searchableText = ''
       if (m.contentType === 'TEXT') {
         if (m.encrypted) {
@@ -207,7 +211,7 @@ async function performSearch(
             searchableText = cached
           } else if (aesKey) {
             try {
-              searchableText = await decryptMessage(aesKey, m.content)
+              searchableText = await decryptMessageWithFallback(aesKey, conv.id, m.content)
             } catch {
               searchableText = ''
             }

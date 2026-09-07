@@ -7,6 +7,7 @@ import { useChatStore } from '@/store/chat-store'
 import { toast } from 'sonner'
 import {
   decryptMessage,
+  decryptMessageWithFallback,
   getCachedAesKey,
   cacheAesKey,
   getOrCreateRsaKeyPair,
@@ -121,8 +122,8 @@ export function useChatRealtime() {
       const onPresenceUpdate = ({ userId: presenceUserId, status }: any) => {
         useChatStore.getState().updatePresence(presenceUserId, status)
       }
-      const onMessageDeleted = ({ conversationId, messageId, deletedAt }: any) => {
-        useChatStore.getState().deleteMessage(conversationId, messageId)
+      const onMessageDeleted = ({ conversationId, messageId, wasBurn }: any) => {
+        useChatStore.getState().deleteMessage(conversationId, messageId, wasBurn)
       }
       const onError = ({ message }: any) => {
         toast.error('Socket error', { description: message })
@@ -175,7 +176,11 @@ export function useChatRealtime() {
 }
 
 // Decrypt all encrypted messages in a conversation in parallel with a single store update
-export async function ensureDecrypted(conversationId: string, messages: any[], currentUserId: string) {
+export async function ensureDecrypted(
+  conversationId: string,
+  messages: any[],
+  currentUserId: string
+) {
   let aesKey = await getCachedAesKey(conversationId)
   if (!aesKey) {
     try {
@@ -188,14 +193,19 @@ export async function ensureDecrypted(conversationId: string, messages: any[], c
 
   const store = useChatStore.getState()
   const pending = messages.filter(
-    (m) => m.encrypted && m.contentType === 'TEXT' && !store.decrypted[`${conversationId}:${m.id}`]
+    (m) =>
+      m.encrypted &&
+      m.contentType === 'TEXT' &&
+      !m.deletedAt &&
+      m.content &&
+      !store.decrypted[`${conversationId}:${m.id}`]
   )
   if (pending.length === 0) return
 
   const results = await Promise.all(
     pending.map(async (m) => {
       try {
-        const plaintext = await decryptMessage(aesKey!, m.content)
+        const plaintext = await decryptMessageWithFallback(aesKey!, conversationId, m.content)
         return { id: m.id, plaintext }
       } catch (e) {
         return null

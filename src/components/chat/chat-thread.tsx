@@ -25,11 +25,21 @@ import {
   decryptMessage,
   encryptBinary,
   decryptBinary,
+  decryptBinaryWithFallback,
   getCachedAesKey,
   cacheAesKey,
   getOrEstablishConversationAesKey,
 } from '@/lib/crypto'
 import { moderateMessage } from '@/lib/moderation'
+
+// Module-level clock skew compensation (serverTime - Date.now())
+let clientServerTimeOffset = 0
+
+export function setClientServerTimeOffset(serverTime: number) {
+  if (typeof serverTime === 'number' && !isNaN(serverTime)) {
+    clientServerTimeOffset = serverTime - Date.now()
+  }
+}
 
 const BURN_DURATIONS = [
   { label: 'Off', value: null, description: 'Standard permanent message' },
@@ -88,6 +98,9 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         const res = await fetch(url)
         if (!res.ok) return
         const data = await res.json()
+        if (data.serverTime) {
+          setClientServerTimeOffset(data.serverTime)
+        }
         const msgs = data.messages.reverse()
         if (replace) {
           useChatStore.getState().setMessages(convId, msgs)
@@ -421,8 +434,20 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       toast.error('You can only delete your own messages')
       return
     }
-    // Optimistic update
-    deleteMessageStore(activeId, messageId)
+
+    // Clean up cached blob URL if any
+    if (msg.attachment?.url && decryptedAttachmentCache.has(msg.attachment.url)) {
+      const blobUrl = decryptedAttachmentCache.get(msg.attachment.url)
+      if (blobUrl && blobUrl.startsWith('blob:')) {
+        try { URL.revokeObjectURL(blobUrl) } catch {}
+      }
+      decryptedAttachmentCache.delete(msg.attachment.url)
+    }
+
+    const wasBurn = Boolean((msg as any).wasBurn || msg.attachment?.burnAfterSeconds)
+
+    // Optimistic update with RAM wipe and wasBurn
+    deleteMessageStore(activeId, messageId, wasBurn)
     try {
       // Emit to socket for real-time broadcast
       const sock = await getSocket(currentUserId)
@@ -875,7 +900,7 @@ function MessageBubble({
 
   // Deleted message placeholder
   if (isDeleted) {
-    const wasBurn = !!message.attachment?.burnAfterSeconds
+    const wasBurn = Boolean((message as any).wasBurn || message.attachment?.burnAfterSeconds)
     return (
       <div
         className={cn(
@@ -1011,14 +1036,18 @@ function BurnCountdownBadge({
   onExpire: () => void
   isMe: boolean
 }) {
-  const [timeLeft, setTimeLeft] = useState<number>(() => {
-    const elapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
+  const computeRemaining = useCallback(() => {
+    // Incorporate server clock offset to protect against skewed local clocks
+    const now = Date.now() + clientServerTimeOffset
+    const created = new Date(createdAt).getTime()
+    const elapsed = Math.max(0, Math.floor((now - created) / 1000))
     return Math.max(0, burnAfterSeconds - elapsed)
-  })
+  }, [burnAfterSeconds, createdAt])
+
+  const [timeLeft, setTimeLeft] = useState<number>(computeRemaining)
 
   useEffect(() => {
-    const elapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
-    const initialRemaining = Math.max(0, burnAfterSeconds - elapsed)
+    const initialRemaining = computeRemaining()
     setTimeLeft(initialRemaining)
 
     if (initialRemaining <= 0) {
@@ -1027,8 +1056,7 @@ function BurnCountdownBadge({
     }
 
     const interval = setInterval(() => {
-      const nowElapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
-      const remaining = Math.max(0, burnAfterSeconds - nowElapsed)
+      const remaining = computeRemaining()
       setTimeLeft(remaining)
       if (remaining <= 0) {
         clearInterval(interval)
@@ -1037,7 +1065,7 @@ function BurnCountdownBadge({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [burnAfterSeconds, createdAt, onExpire])
+  }, [computeRemaining, onExpire])
 
   const isUrgent = timeLeft <= 5
 
@@ -1072,6 +1100,7 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
     if (!attachment.encrypted) return false
     return !decryptedAttachmentCache.has(attachment.url)
   })
+  const [isExpired, setIsExpired] = useState<boolean>(false)
 
   useEffect(() => {
     if (!attachment?.url) return
@@ -1089,6 +1118,7 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
 
     let isMounted = true
     setLoading(true)
+    setIsExpired(false)
 
     ;(async () => {
       try {
@@ -1096,9 +1126,18 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
         if (!key) throw new Error('No encryption key')
 
         const res = await fetch(attachment.url)
-        if (!res.ok) throw new Error('Failed to fetch encrypted attachment')
+        if (!res.ok) {
+          if (res.status === 404 || res.status === 410) {
+            if (isMounted) {
+              setIsExpired(true)
+              setLoading(false)
+            }
+            return
+          }
+          throw new Error('Failed to fetch encrypted attachment')
+        }
         const encBytes = await res.arrayBuffer()
-        const decBytes = await decryptBinary(key, encBytes)
+        const decBytes = await decryptBinaryWithFallback(key, conversationId, encBytes)
         const blob = new Blob([decBytes], { type: attachment.mimeType || 'application/octet-stream' })
         const objectUrl = URL.createObjectURL(blob)
 
@@ -1110,7 +1149,7 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
       } catch (err) {
         console.error('Failed to decrypt attachment:', err)
         if (isMounted) {
-          setUrl(attachment.url)
+          setIsExpired(true)
           setLoading(false)
         }
       }
@@ -1121,7 +1160,7 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
     }
   }, [attachment?.url, attachment?.encrypted, attachment?.mimeType, conversationId, currentUserId])
 
-  return { url, loading }
+  return { url, loading, isExpired }
 }
 
 function AttachmentView({
@@ -1141,7 +1180,7 @@ function AttachmentView({
   onDeleteMessage?: (messageId: string) => void
   onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
-  const { url: mediaUrl, loading } = useDecryptedAttachment(attachment, conversationId, currentUserId)
+  const { url: mediaUrl, loading, isExpired } = useDecryptedAttachment(attachment, conversationId, currentUserId)
 
   const handleDownloadFile = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -1181,6 +1220,15 @@ function AttachmentView({
       a.click()
       document.body.removeChild(a)
     }
+  }
+
+  if (isExpired) {
+    return (
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-xs text-muted-foreground/80 my-1">
+        <Lock className="h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" />
+        <span className="italic">Attachment expired or removed</span>
+      </div>
+    )
   }
 
   if (loading) {

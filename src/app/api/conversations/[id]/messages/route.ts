@@ -82,6 +82,7 @@ export async function GET(
         moderation: m.moderation,
         attachment: null,
         deletedAt: new Date().toISOString(),
+        wasBurn: true,
         createdAt: m.createdAt,
       }
     }
@@ -97,6 +98,7 @@ export async function GET(
       moderation: m.moderation,
       attachment: m.deletedAt ? null : attachmentObj,
       deletedAt: m.deletedAt,
+      wasBurn: isBurn,
       createdAt: m.createdAt,
     }
   })
@@ -117,6 +119,7 @@ export async function GET(
   return NextResponse.json({
     messages: mappedMessages,
     nextCursor,
+    serverTime: now,
   })
 }
 

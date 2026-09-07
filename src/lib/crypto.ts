@@ -180,13 +180,46 @@ export async function encryptMessage(aesKey: CryptoKey, plaintext: string): Prom
 }
 
 export async function decryptMessage(aesKey: CryptoKey, packedB64: string): Promise<string> {
-  const bin = atob(packedB64)
-  const bytes = new Uint8Array(bin.length)
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  if (!packedB64 || typeof packedB64 !== 'string') return ''
+  let bytes: Uint8Array
+  try {
+    const bin = atob(packedB64)
+    bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  } catch {
+    throw new Error('Malformed ciphertext: invalid base64')
+  }
+
+  if (bytes.length <= 12) {
+    throw new Error('Malformed ciphertext: payload too short for IV')
+  }
+
   const iv = bytes.slice(0, 12)
   const ct = bytes.slice(12)
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ct)
   return new TextDecoder().decode(pt)
+}
+
+/**
+ * Resilient message decryption with dual-key fallback:
+ * If the active conversation AES key fails (e.g. historical message encrypted with seed key),
+ * transparently attempts decryption with the legacy deterministic seed key.
+ */
+export async function decryptMessageWithFallback(
+  aesKey: CryptoKey,
+  conversationId: string,
+  packedB64: string
+): Promise<string> {
+  try {
+    return await decryptMessage(aesKey, packedB64)
+  } catch (primaryErr) {
+    try {
+      const fallbackKey = await deriveFallbackSeedKey(conversationId)
+      return await decryptMessage(fallbackKey, packedB64)
+    } catch {
+      throw primaryErr
+    }
+  }
 }
 
 /**
@@ -218,15 +251,14 @@ export async function decryptBinary(
   aesKey: CryptoKey,
   packedBuffer: BufferSource
 ): Promise<ArrayBuffer> {
-  const bytes = packedBuffer instanceof Uint8Array
-    ? packedBuffer
-    : new Uint8Array(
-        packedBuffer instanceof ArrayBuffer
-          ? packedBuffer
-          : (packedBuffer as ArrayBufferView).buffer,
-        (packedBuffer as ArrayBufferView).byteOffset || 0,
-        packedBuffer.byteLength
-      )
+  const bytes = ArrayBuffer.isView(packedBuffer)
+    ? new Uint8Array(packedBuffer.buffer, packedBuffer.byteOffset, packedBuffer.byteLength)
+    : new Uint8Array(packedBuffer)
+
+  if (bytes.byteLength <= 12) {
+    throw new Error('Encrypted binary payload too short for IV')
+  }
+
   const iv = bytes.slice(0, 12)
   const ciphertext = bytes.slice(12)
   return crypto.subtle.decrypt(
@@ -234,6 +266,27 @@ export async function decryptBinary(
     aesKey,
     ciphertext
   )
+}
+
+/**
+ * Resilient binary decryption with dual-key fallback:
+ * If the active conversation AES key fails, transparently attempts fallback seed key.
+ */
+export async function decryptBinaryWithFallback(
+  aesKey: CryptoKey,
+  conversationId: string,
+  packedBuffer: BufferSource
+): Promise<ArrayBuffer> {
+  try {
+    return await decryptBinary(aesKey, packedBuffer)
+  } catch (primaryErr) {
+    try {
+      const fallbackKey = await deriveFallbackSeedKey(conversationId)
+      return await decryptBinary(fallbackKey, packedBuffer)
+    } catch {
+      throw primaryErr
+    }
+  }
 }
 
 // Cache unwrapped conversation AES keys in memory + IndexedDB
@@ -320,6 +373,35 @@ export async function getOrEstablishConversationAesKey(
         try {
           const unwrapped = await unwrapAesKey(serverData.encryptedKey, keyPair.privateKey)
           await cacheAesKey(conversationId, unwrapped)
+
+          // Auto-healing: If any member has a public key but no wrapped key (e.g. joined late or rotated device keys),
+          // wrap the active AES key for them and push to server
+          if (serverData?.members) {
+            const peersNeedingKey = serverData.members.filter(
+              (m: any) => m.publicKey && m.hasKey === false && m.userId !== currentUserId
+            )
+            if (peersNeedingKey.length > 0) {
+              ;(async () => {
+                const autoWrappedMap: Record<string, string> = {}
+                for (const peer of peersNeedingKey) {
+                  try {
+                    const pubKey = await importPublicKeyB64(peer.publicKey)
+                    autoWrappedMap[peer.userId] = await wrapAesKeyFor(unwrapped, pubKey)
+                  } catch (e) {
+                    console.warn(`Failed to auto-heal key for peer ${peer.userId}:`, e)
+                  }
+                }
+                if (Object.keys(autoWrappedMap).length > 0) {
+                  fetch(`/api/conversations/${conversationId}/keys`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keys: autoWrappedMap }),
+                  }).catch(() => {})
+                }
+              })()
+            }
+          }
+
           return unwrapped
         } catch (err) {
           console.warn('Failed to unwrap AES key with private key:', err)

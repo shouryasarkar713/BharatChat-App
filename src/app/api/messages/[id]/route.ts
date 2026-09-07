@@ -40,10 +40,14 @@ export async function DELETE(
     return NextResponse.json({ ok: true, alreadyDeleted: true })
   }
 
+  let wasBurn = false
   // Hard-purge: If message had an uploaded binary file, remove from db.upload
   if (message.attachment) {
     try {
       const att = JSON.parse(message.attachment)
+      if (att?.burnAfterSeconds) {
+        wasBurn = true
+      }
       if (att?.url && typeof att.url === 'string' && att.url.startsWith('/api/uploads/')) {
         const fileId = att.url.replace('/api/uploads/', '')
         if (fileId) {
@@ -63,5 +67,5 @@ export async function DELETE(
     },
   })
 
-  return NextResponse.json({ ok: true, deletedAt: new Date().toISOString() })
+  return NextResponse.json({ ok: true, deletedAt: new Date().toISOString(), wasBurn })
 }

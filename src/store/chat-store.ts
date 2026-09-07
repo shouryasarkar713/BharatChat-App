@@ -76,8 +76,7 @@ interface ChatState {
   updatePresence: (userId: string, status: PresenceStatus) => void
   setTyping: (conversationId: string, userId: string) => void
   clearTyping: (conversationId: string, userId: string) => void
-  updateLastRead: (conversationId: string) => void
-  deleteMessage: (conversationId: string, messageId: string) => void
+  deleteMessage: (conversationId: string, messageId: string, wasBurn?: boolean) => void
   searchTargetMessageId: string | null
   setSearchTargetMessageId: (id: string | null) => void
   showProfanity: boolean
@@ -208,15 +207,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ),
     })),
 
-  deleteMessage: (conversationId, messageId) =>
+  deleteMessage: (conversationId, messageId, wasBurn) =>
     set((s) => {
       const list = s.messagesByConversation[conversationId] || []
+      const nextDecrypted = { ...s.decrypted }
+      delete nextDecrypted[`${conversationId}:${messageId}`]
       return {
+        decrypted: nextDecrypted,
         messagesByConversation: {
           ...s.messagesByConversation,
-          [conversationId]: list.map((m) =>
-            m.id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m
-          ),
+          [conversationId]: list.map((m) => {
+            if (m.id !== messageId) return m
+            const isBurn = wasBurn ?? (m as any).wasBurn ?? !!m.attachment?.burnAfterSeconds
+            return {
+              ...m,
+              deletedAt: new Date().toISOString(),
+              content: '',
+              attachment: null,
+              wasBurn: isBurn,
+            }
+          }),
         },
       }
     }),
