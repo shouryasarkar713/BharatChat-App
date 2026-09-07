@@ -38,6 +38,9 @@ export function CapacitorProvider({ children }: { children: React.ReactNode }) {
             if (store.activeConversationId) {
               // Navigate back to the conversation list
               store.setActiveConversation(null)
+              if (typeof window !== 'undefined' && window.history.state?.chat) {
+                window.history.back()
+              }
             } else {
               // Exit application if at root
               App.exitApp()

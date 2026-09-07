@@ -125,6 +125,8 @@ export function ChatApp() {
   useEffect(() => {
     if (activeId) {
       setMobileShowThread(true)
+    } else {
+      setMobileShowThread(false)
     }
   }, [activeId])
 
