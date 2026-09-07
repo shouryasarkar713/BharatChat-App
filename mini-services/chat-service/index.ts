@@ -109,26 +109,30 @@ getQueue().then((q) => q.start(handleJob)).catch((e) => {
 // ----------------------------------------------------------------------------
 // Socket.IO server
 // ----------------------------------------------------------------------------
-const httpServer = createServer((req, res) => {
-  // Allow health checks and pings from UptimeRobot, Render, and browsers
-  if (req.method === 'HEAD' || req.method === 'GET') {
-    const url = req.url || '/'
-    if (!url.includes('EIO=') && !url.includes('transport=')) {
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      })
-      res.end(JSON.stringify({ status: 'ok', service: 'bharatchat-socket-service' }))
-      return
-    }
-  }
-})
-
+const httpServer = createServer()
 const io = new Server(httpServer, {
   path: '/',
   cors: { origin: '*', methods: ['GET', 'POST'] },
   pingTimeout: 60000,
   pingInterval: 25000,
+})
+
+// Intercept HTTP requests so health checks and uptime pingers (UptimeRobot, Render) receive 200 OK
+// while real Socket.IO connections (containing EIO or websocket transport) are handled by Socket.IO
+const socketIoListener = httpServer.listeners('request')[0] as any
+httpServer.removeAllListeners('request')
+
+httpServer.on('request', (req, res) => {
+  const url = req.url || '/'
+  if (url === '/health' || (!url.includes('EIO=') && !url.includes('transport='))) {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    })
+    res.end(JSON.stringify({ status: 'ok', service: 'bharatchat-socket-service' }))
+  } else if (socketIoListener) {
+    socketIoListener.call(httpServer, req, res)
+  }
 })
 
 // In production, for horizontal scaling, attach the Redis adapter:
