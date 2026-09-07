@@ -23,7 +23,12 @@ interface VoiceRecorderProps {
 
 type RecorderState = 'idle' | 'recording' | 'recorded' | 'uploading'
 
-export function VoiceRecorder({ onSend, disabled, onStateChange }: VoiceRecorderProps) {
+export function VoiceRecorder({
+  onSend,
+  disabled,
+  onStateChange,
+  onUploadVoice,
+}: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle')
   const [duration, setDuration] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -182,7 +187,10 @@ export function VoiceRecorder({ onSend, disabled, onStateChange }: VoiceRecorder
       setDuration(0)
       updateState('idle')
     } catch (e: any) {
-      toast.error('Failed to send voice message')
+      console.error('Failed to send voice message:', e)
+      toast.error('Failed to send voice message', {
+        description: e?.message || 'Please try again',
+      })
       updateState('recorded')
     }
   }

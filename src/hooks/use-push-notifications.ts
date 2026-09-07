@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { Capacitor } from '@capacitor/core'
 
 type Permission = 'default' | 'granted' | 'denied' | 'unsupported'
 
 interface PushNotificationState {
   permission: Permission
   isEnabled: boolean
+  isNative: boolean
   requestPermission: () => Promise<boolean>
   enable: () => Promise<boolean>
   disable: () => void
@@ -18,20 +20,57 @@ const STORAGE_KEY = 'bharatchat.push-enabled'
 export function usePushNotifications(): PushNotificationState {
   const [permission, setPermission] = useState<Permission>('default')
   const [isEnabled, setIsEnabled] = useState(false)
+  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform()
 
-  // Initialize state from browser APIs
+  // Initialize state from browser / native APIs
   useEffect(() => {
-    Promise.resolve().then(() => {
-      if (typeof window === 'undefined' || !('Notification' in window)) {
+    Promise.resolve().then(async () => {
+      const storedEnabled = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) === 'true' : false
+      setIsEnabled(storedEnabled)
+
+      if (typeof window === 'undefined') return
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { LocalNotifications } = await import('@capacitor/local-notifications')
+          const status = await LocalNotifications.checkPermissions()
+          if (status.display === 'granted') {
+            setPermission('granted')
+          } else if (status.display === 'denied') {
+            setPermission('denied')
+          } else {
+            setPermission('default')
+          }
+        } catch {
+          setPermission('default')
+        }
+        return
+      }
+
+      if (!('Notification' in window)) {
         setPermission('unsupported')
         return
       }
       setPermission(Notification.permission as Permission)
-      setIsEnabled(localStorage.getItem(STORAGE_KEY) === 'true')
     })
   }, [])
 
   const requestPermission = useCallback(async () => {
+    if (typeof window === 'undefined') return false
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications')
+        const result = await LocalNotifications.requestPermissions()
+        const granted = result.display === 'granted'
+        setPermission(granted ? 'granted' : 'denied')
+        return granted
+      } catch (err) {
+        console.warn('Native notification permission error:', err)
+        return false
+      }
+    }
+
     if (!('Notification' in window)) return false
     const result = await Notification.requestPermission()
     setPermission(result as Permission)
@@ -41,21 +80,36 @@ export function usePushNotifications(): PushNotificationState {
   const enable = useCallback(async () => {
     const granted = await requestPermission()
     if (granted) {
-      localStorage.setItem(STORAGE_KEY, 'true')
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, 'true')
+      }
       setIsEnabled(true)
       // Welcome notification
       try {
-        const reg = await navigator.serviceWorker?.ready
-        if (reg) {
-          reg.showNotification('BharatChat notifications enabled', {
-            body: 'You will now receive notifications for new messages when this tab is in the background.',
-            icon: '/icon-192.png',
-            tag: 'bharatchat-welcome',
+        if (Capacitor.isNativePlatform()) {
+          const { LocalNotifications } = await import('@capacitor/local-notifications')
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                title: 'BharatChat Notifications Enabled',
+                body: 'You will now receive message notifications on your device.',
+                id: 1001,
+              },
+            ],
           })
-        } else if ('Notification' in window) {
-          new Notification('BharatChat notifications enabled', {
-            body: 'You will now receive notifications for new messages when this tab is in the background.',
-          })
+        } else {
+          const reg = await navigator.serviceWorker?.ready
+          if (reg) {
+            reg.showNotification('BharatChat notifications enabled', {
+              body: 'You will now receive notifications for new messages when this tab is in the background.',
+              icon: '/icon-192.png',
+              tag: 'bharatchat-welcome',
+            })
+          } else if ('Notification' in window) {
+            new Notification('BharatChat notifications enabled', {
+              body: 'You will now receive notifications for new messages when this tab is in the background.',
+            })
+          }
         }
       } catch {}
       return true
@@ -64,13 +118,35 @@ export function usePushNotifications(): PushNotificationState {
   }, [requestPermission])
 
   const disable = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY)
+    }
     setIsEnabled(false)
   }, [])
 
   const notify = useCallback(
-    (title: string, body: string, options?: NotificationOptions) => {
+    async (title: string, body: string, options?: NotificationOptions) => {
       if (!isEnabled || permission !== 'granted') return
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { LocalNotifications } = await import('@capacitor/local-notifications')
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                title,
+                body,
+                id: Math.floor(Math.random() * 1000000),
+                sound: 'default',
+              },
+            ],
+          })
+        } catch (e) {
+          console.warn('Failed to show native notification', e)
+        }
+        return
+      }
+
       // Only show notifications when the document is hidden (tab in background)
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         return
@@ -106,6 +182,7 @@ export function usePushNotifications(): PushNotificationState {
   return {
     permission,
     isEnabled,
+    isNative,
     requestPermission,
     enable,
     disable,

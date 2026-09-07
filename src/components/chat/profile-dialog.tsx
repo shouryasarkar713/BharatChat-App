@@ -102,10 +102,12 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
       const ok = await push.enable()
       if (ok) {
         setPushEnabled(true)
-        toast.success('Push notifications enabled')
+        toast.success(push.isNative ? 'App notifications enabled' : 'Push notifications enabled')
       } else {
         toast.error('Permission denied', {
-          description: 'Please allow notifications in your browser settings.',
+          description: push.isNative
+            ? 'Please allow notifications in your phone Settings → Apps → BharatChat.'
+            : 'Click the lock icon in your browser address bar and set Notifications to Allow.',
         })
       }
     }
@@ -304,13 +306,15 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
                 )}
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Push notifications
+                    {push.isNative ? 'App notifications' : 'Push notifications'}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {push.permission === 'unsupported'
                       ? 'Not supported in this browser'
                       : pushEnabled
                       ? 'Enabled — get notified of new messages'
+                      : push.isNative
+                      ? 'Get notified of new messages on your phone'
                       : 'Get notified when this tab is in the background'}
                   </p>
                 </div>
@@ -320,16 +324,24 @@ export function ProfileDialog({ open, onOpenChange, user }: ProfileDialogProps) 
                 variant={pushEnabled ? 'outline' : 'default'}
                 size="sm"
                 onClick={handleTogglePush}
-                disabled={push.permission === 'unsupported' || push.permission === 'denied'}
+                disabled={push.permission === 'unsupported'}
                 className="h-8"
               >
                 {pushEnabled ? 'Disable' : 'Enable'}
               </Button>
             </div>
             {push.permission === 'denied' && (
-              <p className="text-[11px] text-destructive">
-                Notifications are blocked. Please enable them in your browser's site settings.
-              </p>
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <BellOff className="h-3.5 w-3.5 flex-shrink-0" />
+                  Notifications are blocked
+                </p>
+                <p className="text-[11px] leading-relaxed opacity-90">
+                  {push.isNative
+                    ? 'Please go to your phone Settings → Apps → BharatChat → Notifications and turn them on.'
+                    : 'To unblock in your browser: click the 🔒 lock or tune icon in the address bar (left of the URL), set Notifications to Allow, then reload.'}
+                </p>
+              </div>
             )}
           </div>
         </div>
