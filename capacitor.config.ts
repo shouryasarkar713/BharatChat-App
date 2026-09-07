@@ -11,6 +11,7 @@ const config: CapacitorConfig = {
   server: {
     url: serverUrl,
     cleartext: true,
+    errorPath: 'index.html',
   },
   plugins: {
     SplashScreen: {
