@@ -109,7 +109,21 @@ getQueue().then((q) => q.start(handleJob)).catch((e) => {
 // ----------------------------------------------------------------------------
 // Socket.IO server
 // ----------------------------------------------------------------------------
-const httpServer = createServer()
+const httpServer = createServer((req, res) => {
+  // Allow health checks and pings from UptimeRobot, Render, and browsers
+  if (req.method === 'HEAD' || req.method === 'GET') {
+    const url = req.url || '/'
+    if (!url.includes('EIO=') && !url.includes('transport=')) {
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      })
+      res.end(JSON.stringify({ status: 'ok', service: 'bharatchat-socket-service' }))
+      return
+    }
+  }
+})
+
 const io = new Server(httpServer, {
   path: '/',
   cors: { origin: '*', methods: ['GET', 'POST'] },
