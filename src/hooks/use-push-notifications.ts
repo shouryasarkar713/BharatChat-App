@@ -88,12 +88,26 @@ export function usePushNotifications(): PushNotificationState {
       try {
         if (Capacitor.isNativePlatform()) {
           const { LocalNotifications } = await import('@capacitor/local-notifications')
+          // Ensure high-importance notification channel exists
+          try {
+            await LocalNotifications.createChannel({
+              id: 'bharatchat-messages',
+              name: 'Chat Messages',
+              description: 'Incoming message alerts and chat notifications',
+              importance: 4,
+              visibility: 1,
+              vibration: true,
+            })
+          } catch {}
+
           await LocalNotifications.schedule({
             notifications: [
               {
                 title: 'BharatChat Notifications Enabled',
                 body: 'You will now receive message notifications on your device.',
                 id: 1001,
+                channelId: 'bharatchat-messages',
+                isExactNotification: false,
               },
             ],
           })
@@ -138,6 +152,8 @@ export function usePushNotifications(): PushNotificationState {
                 body,
                 id: Math.floor(Math.random() * 1000000),
                 sound: 'default',
+                channelId: 'bharatchat-messages',
+                isExactNotification: false,
               },
             ],
           })
