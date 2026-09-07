@@ -161,6 +161,7 @@ interface ClientToServerEvents {
   'typing:stop': (payload: { conversationId: string }) => void
   'read:receipt': (payload: { conversationId: string; messageId: string }) => void
   'presence:heartbeat': () => void
+  'conversation:keys_updated': (payload: { conversationId: string }) => void
 }
 
 interface ServerToClientEvents {
@@ -171,6 +172,7 @@ interface ServerToClientEvents {
   'presence:update': (payload: { userId: string; status: 'online' | 'away' | 'offline'; lastActiveAt: number }) => void
   'read:receipt': (payload: { conversationId: string; messageId: string; userId: string }) => void
   'user:authenticated': (payload: { userId: string }) => void
+  'conversation:keys_updated': (payload: { conversationId: string }) => void
   'error': (payload: { message: string }) => void
 }
 
@@ -381,6 +383,11 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       conversationId,
       userId: authenticatedUserId,
     })
+  })
+
+  socket.on('conversation:keys_updated', ({ conversationId }) => {
+    if (!conversationId) return
+    socket.to(`conv:${conversationId}`).emit('conversation:keys_updated', { conversationId })
   })
 
   socket.on('read:receipt', async ({ conversationId, messageId }) => {

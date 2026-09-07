@@ -78,5 +78,36 @@ describe('Crypto E2E Helpers', () => {
     const decryptedMsg = await decryptMessage(unwrappedAesKey, secretMsg.length > 0 ? ciphertext : '')
     expect(decryptedMsg).toBe(secretMsg)
   })
+
+  it('should invalidate cached AES key when invalidateCachedAesKey is called', async () => {
+    const key = await generateAesKey()
+    const convId = 'test-conv-invalidation'
+    const { cacheAesKey, getCachedAesKey, invalidateCachedAesKey } = await import('../lib/crypto')
+    await cacheAesKey(convId, key)
+
+    const cached = await getCachedAesKey(convId)
+    expect(cached).toBeDefined()
+
+    await invalidateCachedAesKey(convId)
+    const afterInvalidation = await getCachedAesKey(convId)
+    expect(afterInvalidation).toBeUndefined()
+  })
+
+  it('should allow transparent key refresh and recovery when key rotates', async () => {
+    // Device A starts with key 1
+    const oldKey = await generateAesKey()
+    // Device B generates and wraps new key 2
+    const newKey = await generateAesKey()
+
+    const message = 'Hello after new device setup!'
+    const ciphertext = await encryptMessage(newKey, message)
+
+    // Decrypting with oldKey fails
+    await expect(decryptMessage(oldKey, ciphertext)).rejects.toThrow()
+
+    // After refreshing to newKey, decryption succeeds
+    const decrypted = await decryptMessage(newKey, ciphertext)
+    expect(decrypted).toBe(message)
+  })
 })
 

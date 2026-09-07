@@ -66,6 +66,20 @@ async function dbGet<T = any>(store: string, key: string): Promise<T | undefined
   }
 }
 
+async function dbDelete(store: string, key: string): Promise<void> {
+  try {
+    const d = await openDb()
+    return new Promise<void>((resolve, reject) => {
+      const tx = d.transaction(store, 'readwrite')
+      tx.objectStore(store).delete(key)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch (err) {
+    // ignore
+  }
+}
+
 /**
  * Ensures the device has an RSA-OAEP keypair in IndexedDB, and publishes
  * the public key to the server if not already synced.
@@ -86,18 +100,17 @@ export async function getOrCreateRsaKeyPair(userId: string): Promise<CryptoKeyPa
   )
   await dbPut(KEY_STORE, userId, pair)
 
-  // Publish public key to server in the background
-  exportPublicKeyB64(pair.publicKey).then(async (pubKeyB64) => {
-    try {
-      await fetch('/api/users/key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicKey: pubKeyB64 }),
-      })
-    } catch (e) {
-      console.warn('Failed to publish public key:', e)
-    }
-  }).catch(() => {})
+  // Publish public key to server
+  try {
+    const pubKeyB64 = await exportPublicKeyB64(pair.publicKey)
+    await fetch('/api/users/key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ publicKey: pubKeyB64 }),
+    })
+  } catch (e) {
+    console.warn('Failed to publish public key:', e)
+  }
 
   return pair
 }
@@ -307,6 +320,11 @@ export async function cacheAesKey(conversationId: string, key: CryptoKey) {
   await dbPut(AES_STORE, conversationId, key)
 }
 
+export async function invalidateCachedAesKey(conversationId: string): Promise<void> {
+  aesKeyCache.delete(conversationId)
+  await dbDelete(AES_STORE, conversationId)
+}
+
 /**
  * Derives the legacy fallback deterministic key for historical messages.
  */
@@ -325,22 +343,26 @@ const activeKeyEstablishment = new Map<string, Promise<CryptoKey>>()
 
 /**
  * True zero-knowledge conversation key establishment:
- * 1. Checks memory & IndexedDB cache (instant 0ms)
+ * 1. Checks memory & IndexedDB cache (instant 0ms) unless forceRefresh is true
  * 2. Fetches wrapped key from server and unwraps with local RSA private key
- * 3. If no key is wrapped yet, generates a fresh random AES-256 key and wraps for all members
- * 4. Falls back to seed key if members lack RSA keys
+ * 3. If no key is wrapped yet or unwrapping fails, generates a fresh random AES-256 key and wraps for all members
+ * 4. Falls back to seed key if members lack RSA keys (in memory only, never permanently stored in IndexedDB)
  */
 export async function getOrEstablishConversationAesKey(
   conversationId: string,
-  currentUserId: string
+  currentUserId: string,
+  forceRefresh = false
 ): Promise<CryptoKey> {
-  // 1. Check local cache
-  const cached = await getCachedAesKey(conversationId)
-  if (cached) return cached
+  // 1. Check local cache (unless forcing refresh)
+  if (!forceRefresh) {
+    const cached = await getCachedAesKey(conversationId)
+    if (cached) return cached
 
-  // Prevent duplicate concurrent establishment
-  if (activeKeyEstablishment.has(conversationId)) {
-    return activeKeyEstablishment.get(conversationId)!
+    if (activeKeyEstablishment.has(conversationId)) {
+      return activeKeyEstablishment.get(conversationId)!
+    }
+  } else {
+    await invalidateCachedAesKey(conversationId)
   }
 
   const promise = (async () => {
@@ -356,7 +378,7 @@ export async function getOrEstablishConversationAesKey(
       // 2. Fetch wrapped key info from server
       let serverData: {
         encryptedKey?: string | null
-        members?: { userId: string; name: string; publicKey: string | null }[]
+        members?: { userId: string; name: string; publicKey: string | null; hasKey?: boolean }[]
       } | null = null
 
       try {
@@ -374,7 +396,7 @@ export async function getOrEstablishConversationAesKey(
           const unwrapped = await unwrapAesKey(serverData.encryptedKey, keyPair.privateKey)
           await cacheAesKey(conversationId, unwrapped)
 
-          // Auto-healing: If any member has a public key but no wrapped key (e.g. joined late or rotated device keys),
+          // Auto-healing: If any member has a public key but no wrapped key on server,
           // wrap the active AES key for them and push to server
           if (serverData?.members) {
             const peersNeedingKey = serverData.members.filter(
@@ -404,11 +426,11 @@ export async function getOrEstablishConversationAesKey(
 
           return unwrapped
         } catch (err) {
-          console.warn('Failed to unwrap AES key with private key:', err)
+          console.warn('Failed to unwrap AES key with private key, establishing new key:', err)
         }
       }
 
-      // 3. If no wrapped key exists for this conversation yet, generate a random AES key
+      // 3. If no wrapped key exists for this conversation yet or unwrap failed, generate a random AES key
       // and wrap it for all members whose public keys are available
       if (serverData?.members && keyPair) {
         const membersWithKeys = serverData.members.filter((m) => m.publicKey)
@@ -427,12 +449,16 @@ export async function getOrEstablishConversationAesKey(
 
           // If we wrapped for at least the current user
           if (wrappedMap[currentUserId]) {
-            // Upload to server asynchronously
-            fetch(`/api/conversations/${conversationId}/keys`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ keys: wrappedMap }),
-            }).catch((err) => console.warn('Failed to post wrapped keys:', err))
+            // Upload to server
+            try {
+              await fetch(`/api/conversations/${conversationId}/keys`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keys: wrappedMap }),
+              })
+            } catch (err) {
+              console.warn('Failed to post wrapped keys:', err)
+            }
 
             await cacheAesKey(conversationId, newAesKey)
             return newAesKey
@@ -442,7 +468,8 @@ export async function getOrEstablishConversationAesKey(
 
       // 4. Graceful fallback to legacy seed key
       const fallback = await deriveFallbackSeedKey(conversationId)
-      await cacheAesKey(conversationId, fallback)
+      // Cache in memory only so subsequent calls can still pick up fresh keys from server
+      aesKeyCache.set(conversationId, fallback)
       return fallback
     } finally {
       activeKeyEstablishment.delete(conversationId)

@@ -10,6 +10,7 @@ import {
   decryptMessageWithFallback,
   getCachedAesKey,
   cacheAesKey,
+  invalidateCachedAesKey,
   getOrCreateRsaKeyPair,
   exportPublicKeyB64,
   getOrEstablishConversationAesKey,
@@ -158,6 +159,19 @@ export function useChatRealtime() {
       const onMessageDeleted = ({ conversationId, messageId, wasBurn }: any) => {
         useChatStore.getState().deleteMessage(conversationId, messageId, wasBurn)
       }
+      const onKeysUpdated = async ({ conversationId }: any) => {
+        if (!conversationId) return
+        try {
+          await invalidateCachedAesKey(conversationId)
+          await getOrEstablishConversationAesKey(conversationId, userId, true)
+          const convMsgs = useChatStore.getState().messagesByConversation[conversationId] || []
+          if (convMsgs.length > 0) {
+            await ensureDecrypted(conversationId, convMsgs, userId)
+          }
+        } catch (e) {
+          console.warn('Failed to handle keys_updated:', e)
+        }
+      }
       const onError = ({ message }: any) => {
         toast.error('Socket error', { description: message })
       }
@@ -169,6 +183,7 @@ export function useChatRealtime() {
       sock.on('typing:start', onTypingStart)
       sock.on('typing:stop', onTypingStop)
       sock.on('presence:update', onPresenceUpdate)
+      sock.on('conversation:keys_updated', onKeysUpdated)
       sock.on('error', onError)
 
       // Set initial state (socket may already be connected)
@@ -235,12 +250,14 @@ export async function ensureDecrypted(
   )
   if (pending.length === 0) return
 
+  let failedAny = false
   const results = await Promise.all(
     pending.map(async (m) => {
       try {
         const plaintext = await decryptMessageWithFallback(aesKey!, conversationId, m.content)
         return { id: m.id, plaintext }
       } catch (e) {
+        failedAny = true
         return null
       }
     })
@@ -249,6 +266,35 @@ export async function ensureDecrypted(
   const successful = results.filter(Boolean) as { id: string; plaintext: string }[]
   if (successful.length > 0) {
     store.setBatchDecrypted(conversationId, successful)
+  }
+
+  // If any message failed to decrypt with the currently cached key,
+  // force-refresh the conversation AES key from the server and retry decryption
+  if (failedAny) {
+    try {
+      const freshKey = await getOrEstablishConversationAesKey(conversationId, currentUserId, true)
+      const successfulIds = new Set(successful.map((s) => s.id))
+      const stillPending = pending.filter((m) => !successfulIds.has(m.id))
+
+      if (stillPending.length > 0) {
+        const retryResults = await Promise.all(
+          stillPending.map(async (m) => {
+            try {
+              const plaintext = await decryptMessageWithFallback(freshKey, conversationId, m.content)
+              return { id: m.id, plaintext }
+            } catch (e) {
+              return null
+            }
+          })
+        )
+        const retrySuccessful = retryResults.filter(Boolean) as { id: string; plaintext: string }[]
+        if (retrySuccessful.length > 0) {
+          store.setBatchDecrypted(conversationId, retrySuccessful)
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to refresh AES key for pending messages:', e)
+    }
   }
 }
 

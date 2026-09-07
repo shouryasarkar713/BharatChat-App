@@ -6,7 +6,7 @@ import { Avatar } from './avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText, Flame, Check, Timer, Loader2 } from 'lucide-react'
+import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText, Flame, Check, Timer, Loader2, AlertCircle } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getSocket } from '@/lib/socket'
 import { format, isSameDay } from 'date-fns'
@@ -239,7 +239,10 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
     let contentToSend = plaintext
     let encrypted = false
     if (e2eEnabled.current) {
-      const key = await getCachedAesKey(activeId)
+      let key = await getCachedAesKey(activeId)
+      if (!key) {
+        key = await getOrEstablishConversationAesKey(activeId, currentUserId)
+      }
       if (key) {
         contentToSend = await encryptMessage(key, plaintext)
         encrypted = true
@@ -317,6 +320,12 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         return
       }
 
+      // Pre-seed local cache with the plaintext file object URL so the sender has instant 0ms preview without "decrypting..."
+      try {
+        const localUrl = URL.createObjectURL(file)
+        decryptedAttachmentCache.set(data.url, localUrl)
+      } catch {}
+
       const attachmentData = {
         ...data,
         name: file.name,
@@ -354,6 +363,9 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         attachment: attachmentData,
         tempId,
       })
+      if (isFileEncrypted) {
+        sock.emit('conversation:keys_updated', { conversationId: activeId })
+      }
       toast.success(isFileEncrypted ? 'Encrypted file shared' : 'File shared')
     } catch (e) {
       toast.error('Upload failed')
@@ -383,6 +395,12 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) return null
+      if (isEncrypted) {
+        try {
+          const localUrl = URL.createObjectURL(blob)
+          decryptedAttachmentCache.set(data.url, localUrl)
+        } catch {}
+      }
       return { url: data.url, encrypted: isEncrypted, size: blob.size }
     } catch {
       return null
@@ -423,6 +441,9 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         attachment: attachmentData,
         tempId,
       })
+      if (attachment.encrypted) {
+        sock.emit('conversation:keys_updated', { conversationId: activeId })
+      }
     } catch (e) {
       toast.error('Failed to send voice message')
     }
@@ -1105,28 +1126,39 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
     return !decryptedAttachmentCache.has(attachment.url)
   })
   const [isExpired, setIsExpired] = useState<boolean>(false)
+  const [decryptionError, setDecryptionError] = useState<boolean>(false)
+  const [retryCount, setRetryCount] = useState<number>(0)
+
+  const retry = useCallback(() => {
+    setRetryCount((c) => c + 1)
+  }, [])
 
   useEffect(() => {
     if (!attachment?.url) return
     if (!attachment.encrypted) {
       setUrl(attachment.url)
       setLoading(false)
+      setIsExpired(false)
+      setDecryptionError(false)
       return
     }
 
     if (decryptedAttachmentCache.has(attachment.url)) {
       setUrl(decryptedAttachmentCache.get(attachment.url)!)
       setLoading(false)
+      setIsExpired(false)
+      setDecryptionError(false)
       return
     }
 
     let isMounted = true
     setLoading(true)
     setIsExpired(false)
+    setDecryptionError(false)
 
     ;(async () => {
       try {
-        const key = await getOrEstablishConversationAesKey(conversationId, currentUserId)
+        let key = await getOrEstablishConversationAesKey(conversationId, currentUserId)
         if (!key) throw new Error('No encryption key')
 
         const res = await fetch(attachment.url)
@@ -1141,7 +1173,23 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
           throw new Error('Failed to fetch encrypted attachment')
         }
         const encBytes = await res.arrayBuffer()
-        const decBytes = await decryptBinaryWithFallback(key, conversationId, encBytes)
+        let decBytes: ArrayBuffer
+        try {
+          decBytes = await decryptBinaryWithFallback(key, conversationId, encBytes)
+        } catch (decryptErr) {
+          // If decryption fails with cached key, force refresh key from server and retry
+          try {
+            key = await getOrEstablishConversationAesKey(conversationId, currentUserId, true)
+            decBytes = await decryptBinaryWithFallback(key, conversationId, encBytes)
+          } catch (retryErr) {
+            console.error('Failed to decrypt attachment after key refresh:', retryErr)
+            if (isMounted) {
+              setDecryptionError(true)
+              setLoading(false)
+            }
+            return
+          }
+        }
         const blob = new Blob([decBytes], { type: attachment.mimeType || 'application/octet-stream' })
         const objectUrl = URL.createObjectURL(blob)
 
@@ -1151,9 +1199,8 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
           setLoading(false)
         }
       } catch (err) {
-        console.error('Failed to decrypt attachment:', err)
+        console.error('Failed to load attachment:', err)
         if (isMounted) {
-          setIsExpired(true)
           setLoading(false)
         }
       }
@@ -1162,9 +1209,9 @@ function useDecryptedAttachment(attachment: any, conversationId: string, current
     return () => {
       isMounted = false
     }
-  }, [attachment?.url, attachment?.encrypted, attachment?.mimeType, conversationId, currentUserId])
+  }, [attachment?.url, attachment?.encrypted, attachment?.mimeType, conversationId, currentUserId, retryCount])
 
-  return { url, loading, isExpired }
+  return { url, loading, isExpired, decryptionError, retry }
 }
 
 function AttachmentView({
@@ -1184,7 +1231,7 @@ function AttachmentView({
   onDeleteMessage?: (messageId: string) => void
   onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
-  const { url: mediaUrl, loading, isExpired } = useDecryptedAttachment(attachment, conversationId, currentUserId)
+  const { url: mediaUrl, loading, isExpired, decryptionError, retry } = useDecryptedAttachment(attachment, conversationId, currentUserId)
 
   const handleDownloadFile = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -1231,6 +1278,26 @@ function AttachmentView({
       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-xs text-muted-foreground/80 my-1">
         <Lock className="h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" />
         <span className="italic">Attachment expired or removed</span>
+      </div>
+    )
+  }
+
+  if (decryptionError) {
+    return (
+      <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive my-1">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>Could not decrypt attachment</span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            retry()
+          }}
+          className="text-[11px] underline font-medium hover:text-destructive/80"
+        >
+          Retry
+        </button>
       </div>
     )
   }
