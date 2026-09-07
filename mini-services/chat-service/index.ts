@@ -289,9 +289,20 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       socket.emit('error', { message: 'message not found' })
       return
     }
-    if (msg.senderId !== authenticatedUserId) {
-      socket.emit('error', { message: 'you can only delete your own messages' })
-      return
+    const isSender = msg.senderId === authenticatedUserId
+    if (!isSender) {
+      const membership = await db.conversationMember.findUnique({
+        where: {
+          conversationId_userId: {
+            conversationId,
+            userId: authenticatedUserId,
+          },
+        },
+      }).catch(() => null)
+      if (!membership) {
+        socket.emit('error', { message: 'you can only delete messages in your own conversations' })
+        return
+      }
     }
     if (msg.deletedAt) {
       // Already deleted — broadcast idempotently

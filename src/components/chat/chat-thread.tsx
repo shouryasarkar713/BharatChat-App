@@ -6,7 +6,8 @@ import { Avatar } from './avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText } from 'lucide-react'
+import { MessageSquare, Users, Lock, Send, Paperclip, ArrowLeft, ShieldCheck, Flag, Trash2, Mic, X, Download, FileText, Flame, Check, Timer } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getSocket } from '@/lib/socket'
 import { format, isSameDay } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,14 @@ import {
   getOrEstablishConversationAesKey,
 } from '@/lib/crypto'
 import { moderateMessage } from '@/lib/moderation'
+
+const BURN_DURATIONS = [
+  { label: 'Off', value: null, description: 'Standard permanent message' },
+  { label: '10s', value: 10, description: 'Ultra-fast burn (ideal for OTPs)' },
+  { label: '30s', value: 30, description: 'Quick burn (recommended for passwords)' },
+  { label: '1 min', value: 60, description: '1 minute temporary note' },
+  { label: '5 min', value: 300, description: '5 minutes confidential text' },
+] as const
 
 interface ChatThreadProps {
   currentUserId: string
@@ -59,6 +68,8 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   const [hasMore, setHasMore] = useState(true)
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string; messageId?: string; isMe?: boolean } | null>(null)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'recorded' | 'uploading'>('idle')
+  const [burnDuration, setBurnDuration] = useState<number | null>(null)
+  const [isBurnPopoverOpen, setIsBurnPopoverOpen] = useState(false)
   const isVoiceActive = voiceState !== 'idle'
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -220,6 +231,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       }
     }
 
+    const burnMeta = burnDuration ? { burnAfterSeconds: burnDuration } : null
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const tempMsg: any = {
       id: tempId,
@@ -234,6 +246,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       content: contentToSend,
       contentType: 'TEXT',
       encrypted,
+      attachment: burnMeta,
       moderation: mod.status,
       createdAt: new Date().toISOString(),
       tempId,
@@ -248,6 +261,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         content: contentToSend,
         contentType: 'TEXT',
         encrypted,
+        attachment: burnMeta,
         tempId,
       })
     } catch (e) {
@@ -270,6 +284,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         toast.error('Upload failed', { description: data.error })
         return
       }
+      const attachmentData = burnDuration ? { ...data, burnAfterSeconds: burnDuration } : data
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
       const tempMsg: any = {
         id: tempId,
@@ -285,7 +300,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         contentType: data.contentType,
         encrypted: false,
         moderation: 'APPROVED',
-        attachment: data,
+        attachment: attachmentData,
         createdAt: new Date().toISOString(),
         tempId,
       }
@@ -296,7 +311,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         content: data.name,
         contentType: data.contentType,
         encrypted: false,
-        attachment: data,
+        attachment: attachmentData,
         tempId,
       })
       toast.success('File shared')
@@ -309,6 +324,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
   // Send a voice message (already uploaded by the VoiceRecorder component)
   async function handleSendVoice(attachment: any) {
     if (!activeId) return
+    const attachmentData = burnDuration ? { ...attachment, burnAfterSeconds: burnDuration } : attachment
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const tempMsg: any = {
       id: tempId,
@@ -324,7 +340,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       contentType: 'AUDIO',
       encrypted: false,
       moderation: 'APPROVED',
-      attachment,
+      attachment: attachmentData,
       createdAt: new Date().toISOString(),
       tempId,
     }
@@ -336,7 +352,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
         content: attachment.name,
         contentType: 'AUDIO',
         encrypted: false,
-        attachment,
+        attachment: attachmentData,
         tempId,
       })
     } catch (e) {
@@ -344,13 +360,13 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
     }
   }
 
-  // Delete a message (sender only). Soft-delete via socket + REST fallback.
-  async function handleDeleteMessage(messageId: string) {
+  // Delete a message (sender or self-destruct expire). Soft-delete via socket + REST fallback.
+  async function handleDeleteMessage(messageId: string, silent = false) {
     if (!activeId) return
     const prevMessages = useChatStore.getState().messagesByConversation[activeId] || []
     const msg = prevMessages.find((m) => m.id === messageId)
     if (!msg) return
-    if (msg.senderId !== currentUserId) {
+    if (!silent && msg.senderId !== currentUserId) {
       toast.error('You can only delete your own messages')
       return
     }
@@ -362,9 +378,9 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
       sock.emit('message:delete', { conversationId: activeId, messageId })
       // Also hit REST as a fallback (in case socket isn't connected)
       fetch(`/api/messages/${messageId}`, { method: 'DELETE' }).catch(() => {})
-      toast.success('Message deleted')
+      if (!silent) toast.success('Message deleted')
     } catch (e) {
-      toast.error('Failed to delete message')
+      if (!silent) toast.error('Failed to delete message')
     }
   }
 
@@ -533,6 +549,29 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
 
       {/* Composer */}
       <footer className="p-3 sm:p-4 bg-transparent z-10">
+        {burnDuration && !isVoiceActive && (
+          <div className="max-w-4xl mx-auto mb-2 px-3.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-amber-600 dark:text-amber-400 text-xs animate-in fade-in slide-in-from-bottom-1">
+            <div className="flex items-center gap-2">
+              <Flame className="h-4 w-4 fill-amber-500/30 text-amber-500 animate-pulse flex-shrink-0" />
+              <span className="font-semibold">
+                Burn-After-Reading active:
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Next message auto-deletes in {burnDuration < 60 ? `${burnDuration}s` : `${burnDuration / 60}m`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBurnDuration(null)}
+              className="text-[11px] font-semibold hover:text-foreground p-0.5 rounded transition-colors cursor-pointer flex items-center gap-1 text-muted-foreground hover:text-destructive"
+              title="Turn off burn-after-reading"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>Turn off</span>
+            </button>
+          </div>
+        )}
+
         <div className="max-w-4xl mx-auto flex items-center gap-2 p-2 rounded-2xl bg-card/75 border border-border/40 shadow-lift glass relative">
           {!isVoiceActive && (
             <>
@@ -554,6 +593,75 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
               >
                 <Paperclip className="h-4.5 w-4.5" />
               </Button>
+
+              <Popover open={isBurnPopoverOpen} onOpenChange={setIsBurnPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    className={cn(
+                      "flex-shrink-0 h-9.5 w-9.5 rounded-xl border transition-all duration-150 cursor-pointer relative",
+                      burnDuration
+                        ? "bg-amber-500/20 border-amber-500/50 text-amber-500 shadow-sm"
+                        : "border-border/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground bg-transparent shadow-none"
+                    )}
+                    title={burnDuration ? `Burn-after-reading: ${burnDuration}s` : "Set burn-after-reading / self-destruct timer"}
+                  >
+                    <Flame className={cn("h-4.5 w-4.5", burnDuration && "text-amber-500 fill-amber-500/30 animate-pulse")} />
+                    {burnDuration && (
+                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[8px] font-extrabold text-black shadow-xs">
+                        {burnDuration < 60 ? `${burnDuration}` : `${burnDuration / 60}m`}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="top" sideOffset={10} className="w-64 p-2.5 rounded-2xl bg-card border border-border/70 shadow-xl backdrop-blur-xl z-50">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+                      <div className="h-7 w-7 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-500">
+                        <Flame className="h-4 w-4 fill-amber-500/30" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-foreground">Burn-After-Reading</h4>
+                        <p className="text-[10px] text-muted-foreground">Auto-delete passwords & OTPs</p>
+                      </div>
+                    </div>
+                    <div className="grid gap-1">
+                      {BURN_DURATIONS.map((opt) => {
+                        const isSelected = burnDuration === opt.value
+                        return (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => {
+                              setBurnDuration(opt.value)
+                              setIsBurnPopoverOpen(false)
+                              if (opt.value) {
+                                toast.info(`Self-destruct timer set to ${opt.label}`, {
+                                  description: 'Next message will auto-delete after this duration.',
+                                })
+                              }
+                            }}
+                            className={cn(
+                              'flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs transition-colors cursor-pointer',
+                              isSelected
+                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium'
+                                : 'hover:bg-muted/60 text-foreground'
+                            )}
+                          >
+                            <div>
+                              <span className="font-semibold text-xs block">{opt.label}</span>
+                              <span className="text-[10px] text-muted-foreground block">{opt.description}</span>
+                            </div>
+                            {isSelected && <Check className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 ml-2" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </>
           )}
 
@@ -594,7 +702,7 @@ export function ChatThread({ currentUserId, onBack }: ChatThreadProps) {
           )}
         </div>
         <p className="text-[10px] text-muted-foreground/75 mt-2 text-center tracking-wide">
-          All messages are end-to-end encrypted. Tap 🎤 for voice.
+          All messages are end-to-end encrypted. Tap 🔥 for self-destruct, 🎤 for voice.
         </p>
       </footer>
 
@@ -622,7 +730,7 @@ function MessageList({
   currentUserId: string
   decrypted: Record<string, string>
   conversationId: string
-  onDeleteMessage: (messageId: string) => void
+  onDeleteMessage: (messageId: string, silent?: boolean) => void
   onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
   return (
@@ -680,7 +788,7 @@ function MessageBubble({
   displayContent: string
   showSender: boolean
   showAvatar: boolean
-  onDeleteMessage: (messageId: string) => void
+  onDeleteMessage: (messageId: string, silent?: boolean) => void
   onPreviewImage?: (attachment: { url: string; name: string; messageId?: string; isMe?: boolean }) => void
 }) {
   const showProfanity = useChatStore((s) => s.showProfanity)
@@ -709,6 +817,7 @@ function MessageBubble({
 
   // Deleted message placeholder
   if (isDeleted) {
+    const wasBurn = !!message.attachment?.burnAfterSeconds
     return (
       <div
         className={cn(
@@ -718,8 +827,15 @@ function MessageBubble({
       >
         {!isMe && <div className="w-8 flex-shrink-0" />}
         <div className={cn('max-w-[75%] sm:max-w-[60%] flex flex-col', isMe ? 'items-end' : 'items-start')}>
-          <div className="px-3 py-2 rounded-2xl bg-muted/60 text-muted-foreground italic text-sm border border-dashed border-border rounded-br-sm">
-            🚫 This message was deleted
+          <div className="px-3 py-2 rounded-2xl bg-muted/60 text-muted-foreground italic text-xs sm:text-sm border border-dashed border-border rounded-br-sm flex items-center gap-1.5">
+            {wasBurn ? (
+              <>
+                <Flame className="h-3.5 w-3.5 text-amber-500/70 flex-shrink-0" />
+                <span>This message self-destructed</span>
+              </>
+            ) : (
+              <span>🚫 This message was deleted</span>
+            )}
           </div>
           <span className={cn('text-[10px] text-muted-foreground mt-0.5', isMe ? 'mr-1' : 'ml-1')}>
             {format(new Date(message.createdAt), 'HH:mm')}
@@ -791,7 +907,16 @@ function MessageBubble({
               isBlocked && 'opacity-60 italic'
             )}
           >
-            {message.attachment ? (
+            {message.attachment?.burnAfterSeconds && (
+              <BurnCountdownBadge
+                burnAfterSeconds={message.attachment.burnAfterSeconds}
+                createdAt={message.createdAt}
+                isMe={isMe}
+                onExpire={() => onDeleteMessage(message.id, true)}
+              />
+            )}
+
+            {message.attachment && (message.attachment.url || message.attachment.contentType === 'IMAGE' || message.attachment.contentType === 'AUDIO' || message.attachment.contentType === 'VIDEO' || message.attachment.mimeType) ? (
               <AttachmentView
                 attachment={message.attachment}
                 isMe={isMe}
@@ -799,7 +924,9 @@ function MessageBubble({
                 onDeleteMessage={onDeleteMessage}
                 onPreviewImage={onPreviewImage}
               />
-            ) : message.contentType === 'TEXT' ? (
+            ) : null}
+
+            {message.contentType === 'TEXT' ? (
               <p className="text-sm whitespace-pre-wrap leading-relaxed">{textToRender}</p>
             ) : null}
           </div>
@@ -809,6 +936,65 @@ function MessageBubble({
           {isFlagged && <span className="ml-1 text-amber-600">· filtered</span>}
         </span>
       </div>
+    </div>
+  )
+}
+
+function BurnCountdownBadge({
+  burnAfterSeconds,
+  createdAt,
+  onExpire,
+  isMe,
+}: {
+  burnAfterSeconds: number
+  createdAt: string
+  onExpire: () => void
+  isMe: boolean
+}) {
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    const elapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
+    return Math.max(0, burnAfterSeconds - elapsed)
+  })
+
+  useEffect(() => {
+    const elapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
+    const initialRemaining = Math.max(0, burnAfterSeconds - elapsed)
+    setTimeLeft(initialRemaining)
+
+    if (initialRemaining <= 0) {
+      onExpire()
+      return
+    }
+
+    const interval = setInterval(() => {
+      const nowElapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
+      const remaining = Math.max(0, burnAfterSeconds - nowElapsed)
+      setTimeLeft(remaining)
+      if (remaining <= 0) {
+        clearInterval(interval)
+        onExpire()
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [burnAfterSeconds, createdAt, onExpire])
+
+  const isUrgent = timeLeft <= 5
+
+  return (
+    <div
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide border mb-1.5 transition-all select-none',
+        isUrgent
+          ? 'bg-rose-500/25 text-rose-100 border-rose-500/50 animate-pulse'
+          : isMe
+            ? 'bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30'
+            : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+      )}
+      title={`Self-destructs in ${timeLeft}s`}
+    >
+      <Flame className={cn('h-3.5 w-3.5 flex-shrink-0', isUrgent ? 'text-rose-300 animate-bounce' : 'text-amber-500 fill-amber-500/30')} />
+      <span>Self-destructs in {timeLeft}s</span>
     </div>
   )
 }

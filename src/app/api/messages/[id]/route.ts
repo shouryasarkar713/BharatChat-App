@@ -14,18 +14,26 @@ export async function DELETE(
 
   const message = await db.message.findUnique({
     where: { id },
-    select: { id: true, senderId: true, deletedAt: true },
+    select: { id: true, senderId: true, conversationId: true, deletedAt: true },
   })
 
   if (!message) {
     return NextResponse.json({ error: 'Message not found' }, { status: 404 })
   }
 
-  if (message.senderId !== user.id) {
-    return NextResponse.json(
-      { error: 'You can only delete your own messages' },
-      { status: 403 }
-    )
+  // Allow sender OR conversation members if requested (e.g. self-destruct countdown)
+  const isSender = message.senderId === user.id
+  if (!isSender) {
+    // Check if user is a member of this conversation
+    const membership = await db.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId: message.conversationId, userId: user.id } },
+    })
+    if (!membership) {
+      return NextResponse.json(
+        { error: 'You can only delete messages in your own conversations' },
+        { status: 403 }
+      )
+    }
   }
 
   if (message.deletedAt) {
