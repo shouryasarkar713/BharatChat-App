@@ -7,6 +7,8 @@ import { Toaster as SonnerToaster } from '@/components/ui/sonner'
 import { Toaster } from '@/components/ui/toaster'
 import { useState, type ReactNode } from 'react'
 
+import { CapacitorProvider } from './capacitor-provider'
+
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
@@ -30,7 +32,7 @@ export function Providers({ children }: { children: ReactNode }) {
           disableTransitionOnChange={false}
           storageKey="pulsechat-theme"
         >
-          {children}
+          <CapacitorProvider>{children}</CapacitorProvider>
           <SonnerToaster
             position="top-right"
             richColors
