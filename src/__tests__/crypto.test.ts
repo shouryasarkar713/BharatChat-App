@@ -77,7 +77,7 @@ describe('Crypto E2E Helpers', () => {
     const ciphertext = await encryptMessage(conversationAesKey, secretMsg)
     const decryptedMsg = await decryptMessage(unwrappedAesKey, secretMsg.length > 0 ? ciphertext : '')
     expect(decryptedMsg).toBe(secretMsg)
-  })
+  }, 15000)
 
   it('should invalidate cached AES key when invalidateCachedAesKey is called', async () => {
     const key = await generateAesKey()

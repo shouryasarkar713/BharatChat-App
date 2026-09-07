@@ -95,6 +95,14 @@ export function useChatRealtime() {
       const onMessageNew = (msg: any) => {
         const store = useChatStore.getState()
         store.addMessage(msg)
+
+        // Immediately decrypt incoming encrypted message so recipient never sees "Decrypting..."
+        if (msg.encrypted && msg.contentType === 'TEXT' && msg.content) {
+          ensureDecrypted(msg.conversationId, [msg], userId).catch((err) => {
+            console.warn('Realtime message decryption error:', err)
+          })
+        }
+
         const isActive = store.activeConversationId === msg.conversationId
         const existing = store.conversations.find((c) => c.id === msg.conversationId)
         if (existing) {
@@ -290,6 +298,19 @@ export async function ensureDecrypted(
         const retrySuccessful = retryResults.filter(Boolean) as { id: string; plaintext: string }[]
         if (retrySuccessful.length > 0) {
           store.setBatchDecrypted(conversationId, retrySuccessful)
+        }
+
+        // For any message that truly cannot be decrypted (e.g. from an old corrupted test session),
+        // mark it with a clear fallback so the UI never stays stuck with an infinite "Decrypting..."
+        const permanentlyFailed = stillPending.filter((m) => !retrySuccessful.some((r) => r.id === m.id))
+        if (permanentlyFailed.length > 0) {
+          store.setBatchDecrypted(
+            conversationId,
+            permanentlyFailed.map((m) => ({
+              id: m.id,
+              plaintext: '🔒 [Encrypted message - key mismatch]',
+            }))
+          )
         }
       }
     } catch (e) {
