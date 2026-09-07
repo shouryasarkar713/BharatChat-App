@@ -1,14 +1,15 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
-const rawUrl = process.env.CAPACITOR_SERVER_URL?.trim()
-const serverUrl = rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) ? rawUrl : undefined
+const DEFAULT_URL = 'https://bharat-chat-app-vqn8.vercel.app'
+const rawUrl = process.env.CAPACITOR_SERVER_URL?.trim() || DEFAULT_URL
+const serverUrl = rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) ? rawUrl : DEFAULT_URL
 
 const config: CapacitorConfig = {
   appId: 'com.bharatchat.app',
   appName: 'BharatChat',
   webDir: 'public',
   server: {
-    ...(serverUrl ? { url: serverUrl } : {}),
+    url: serverUrl,
     cleartext: true,
   },
   plugins: {
