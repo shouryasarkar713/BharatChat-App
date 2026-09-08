@@ -1,193 +1,257 @@
-# BharatChat: A Real-Time Messaging Application
+# 🇮🇳 BharatChat: Secure Cross-Platform Real-Time Messaging
 
-> 🚀 **Live Demo:** [bharat-chat-app-vqn8.vercel.app](https://bharat-chat-app-vqn8.vercel.app/)
+> 🚀 **Live Web App:** [bharat-chat-app-vqn8.vercel.app](https://bharat-chat-app-vqn8.vercel.app/)  
+> 📱 **Android App:** Built with Capacitor, automated CI/CD via GitHub Actions & Firebase App Distribution.
 
-BharatChat is a premium, modern, and highly secure real-time messaging web application. It features client-side end-to-end encryption (E2E), real-time presence indicators, typing indicators, read receipts, and support for multimedia file attachments.
+BharatChat is a modern, high-performance, cross-platform messaging application available on **Desktop Web, Mobile Web, and Android**. Built with **Next.js 16 (Turbopack)**, **Tailwind CSS**, **Prisma ORM (PostgreSQL)**, **Socket.IO**, and **Capacitor**, it delivers sub-second messaging with client-side **End-to-End Encryption (E2E)**, encrypted voice notes, burn-on-read timers, and native notifications.
+
+---
+
+## 📱 Cross-Platform Support
+
+BharatChat provides a seamless experience across mobile and desktop environments:
+
+* **Android Native App (`com.bharatchat.app`)**:
+  * Native microphone permissions (`RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`) for in-app voice recording.
+  * True native push/local notifications via `@capacitor/local-notifications` with a high-priority "Chat Messages" channel and heads-up banner display.
+  * Optimized hardware back-button navigation: pressing back closes full-screen photo previews or dialogs before navigating away from active chats.
+  * Native splash screen and dark theme status bar integration.
+* **Desktop & Mobile Web**:
+  * Progressive Web App (PWA) with install prompts and service worker push notifications.
+  * Responsive layout optimized for mobile touchscreens, tablets, and wide-screen desktops.
+  * Direct browser permission recovery guidance for blocked notifications.
+
+---
+
+## 🔁 Comprehensive Communication Matrix
+
+Every feature is designed and tested to work symmetrically across all **four communication permutations**:
+
+| Communication Path | Text Messages | Photos & Files | Voice Notes | Burn Timers | Read Receipts |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **App $\rightarrow$ App** (Mobile to Mobile) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **App $\rightarrow$ Web** (Mobile to Desktop) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Web $\rightarrow$ App** (Desktop to Mobile) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Web $\rightarrow$ Web** (Desktop to Desktop) | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+* Verified with a dedicated 59-test suite ensuring zero byte corruption across Indic scripts (**Hindi, Bengali, Tamil, Telugu**), complex emoji sequences (`👨‍👩‍👧‍👦`, `🚀`, `🇮🇳`), and payloads up to 50KB+.
 
 ---
 
 ## 🎨 Key Features
 
-1. **End-to-End Encryption (E2E) & Dynamic Content Moderation**
-   * Messages are encrypted client-side using **AES-GCM (256-bit)** and keys are exchanged securely using **RSA-OAEP (2048-bit)** via the browser's Web Crypto API.
-   * Cryptographic keys are cached locally in **IndexedDB**. The server only stores encrypted ciphertexts and never has access to raw message contents.
-   * **Profanity Filter Customization (Option D)**: Users can toggle a "Show Profanity" option in their Profile settings. E2E messages are transmitted uncensored; the recipient client dynamically applies content moderation (`moderateMessage`) at render-time depending on their preference.
+### 1. 🔐 End-to-End Encryption (E2E) & Privacy
+* **Client-Side AES-GCM (256-bit)**: Messages, photos, and voice notes are encrypted in the browser/app before transmission using the Web Crypto API.
+* **Deterministic Conversation Keys & RSA-OAEP**: Keys are securely derived per conversation via PBKDF2 with salt, ensuring instant cross-platform synchronization without server access.
+* **Zero-Knowledge Architecture**: The server only handles and persists encrypted ciphertexts and authentication tags. Plaintext content is never exposed to the backend.
 
-2. **Sub-second Real-time Messaging & Presence Sync**
-   * Handled by a dedicated **Socket.IO** microservice.
-   * Real-time read receipts, dynamic typing indicators, and online/away/offline presence beacons with heartbeat monitoring.
-   * **Smart Presence Syncing**: On socket connection (`user:join`), the server queries and synchronizes the active presence status of all members in the user's conversations, resolving partial/one-sided offline status bugs.
+### 2. 🎙️ High-Fidelity Voice Notes
+* Record voice messages with real-time waveform animation and duration timer.
+* Voice notes are encrypted client-side and streamed over WebSocket.
+* Built-in playback controller with scrubbing, seeking, and playback rate adjustment.
+* Native Android OS microphone integration via runtime permission flow.
 
-3. **Queue-Backed DB Persistence & Binary Upload Storage**
-   * The Socket.IO server uses a message queue (backed by **RabbitMQ** with an in-memory fallback) to ensure that incoming messages are written to the database reliably.
-   * Failed persistence jobs are automatically retried up to 3 times with exponential backoff before being routed to a Dead-Letter Queue (DLQ).
-   * **Stateless Binary Storage**: Files, images, and voice notes are stored as binary buffers (`bytea` / `Bytes` type) directly inside the database, ensuring stateless host compatibility (like Vercel) instead of relying on ephemeral local disk `/tmp` containers.
+### 3. ⏳ Self-Destructing / Burn Messages
+* Set burn-after-reading timers (**5s, 10s, 30s, 1m, 5m**) for confidential conversations.
+* Real-time circular countdown indicator showing remaining seconds.
+* Client-server clock skew compensation prevents premature or delayed expiration across devices.
+* Automatically deletes from local state and triggers permanent server-side purge upon timer expiration.
 
-4. **Rich Multimedia Sharing & High-Accuracy Audio**
-   * Upload and share pictures, videos, files, and voice notes.
-   * **High-Accuracy Audio Recording**: Decodes recorded WebM audio blobs using `AudioContext` on the client to compute precise track duration in seconds, bypassing browser metadata limitations.
+### 4. 🔔 Smart Notifications
+* **Android**: Uses `@capacitor/local-notifications` with a dedicated notification channel for incoming message alerts. Configured with non-exact alarms to prevent unwanted "Alarms & Reminders" permission prompts.
+* **Desktop Web**: Background tab notifications powered by Web Notifications & Service Worker.
 
-5. **Modern, Responsive UI & Deep Linking**
-   * Built with **Next.js**, **Tailwind CSS**, and **shadcn/ui** components.
-   * **Deep Link Navigation**: Searching for messages automatically handles chat room transitions, smooth scroll centering, and highlights target messages with a glowing animation.
-   * **Premium Typography**: Custom two-tone wordmark ("Bharat" in graphite/ink, "Chat" in marigold) separated by a styled mini speech-bubble logo icon in both the sidebar and auth panels.
+### 5. 🛡️ Dynamic Content Safety & Moderation
+* **On-Device Profanity Filter**: Recipient client dynamically evaluates content safety at render-time.
+* **Scunthorpe Problem Immune**: Word boundaries prevent false positives (e.g., words like *"classic"*, *"pass"*, *"document"*, and *"cocktail"* are always allowed).
+* **User Control**: Users can toggle "Show Profanity" on or off in Profile Settings without affecting E2E ciphertexts.
+
+### 6. ⚡ Sub-Second Real-Time Synchronization
+* Dedicated **Socket.IO** microservice handling real-time messaging, typing indicators, read receipts, and online/offline presence beacons.
+* Smart presence reconciliation on reconnect (`user:join`) ensures contact presence remains accurate across network switches.
 
 ---
 
-## 🏗️ Project Architecture
+## 🏗️ System Architecture
 
 ```
-                      ┌─────────────────────────────────┐
-                      │    Next.js Frontend / API       │
-                      │          (Port 3000)            │
-                      └────────────────┬────────────────┘
-                                       │
-                        Handshake /    │ WebSockets
-                        NextAuth JWT   │ (Port 3003)
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │    Socket.IO Chat Service       │
-                      └────────────────┬────────────────┘
-                                       │
-                    RabbitMQ /         │ Database writes
-                    Memory Queue       │ (Prisma ORM)
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │         PostgreSQL / DB         │
-                      └─────────────────────────────────┘
+                                  ┌───────────────────────────────┐
+                                  │      Android Mobile App       │
+                                  │       (Capacitor Webview)     │
+                                  └──────────────┬────────────────┘
+                                                 │
+  ┌───────────────────────────────┐              │  HTTPS / WSS
+  │      Desktop / Mobile Web     │              │  (E2E Encrypted)
+  │     (Next.js 16 Turbopack)    │              │
+  └──────────────┬────────────────┘              │
+                 │                               │
+                 └───────────────┬───────────────┘
+                                 ▼
+                 ┌───────────────────────────────┐
+                 │     Next.js API & Web App     │
+                 │           (Port 3000)         │
+                 └───────────────┬───────────────┘
+                                 │
+                   Handshake /   │ WebSockets
+                   JWT Session   │ (Port 3003)
+                                 ▼
+                 ┌───────────────────────────────┐
+                 │    Socket.IO Chat Service     │
+                 └───────────────┬───────────────┘
+                                 │
+                   Prisma ORM    │ Queue Persistence
+                  (PostgreSQL)   │ (RabbitMQ / In-Memory)
+                                 ▼
+                 ┌───────────────────────────────┐
+                 │      PostgreSQL Database      │
+                 └───────────────────────────────┘
 ```
 
 ---
 
 ## 💻 Local Setup & Installation
 
-Follow these steps to configure and run BharatChat locally on your laptop:
-
 ### 📋 Prerequisites
-* **Node.js** (v18.x or higher)
-* **npm** (v9.x or higher) or **Bun**
+* **Node.js** (v20.x or higher)
+* **npm** (v10.x or higher)
+* **PostgreSQL** instance (local or hosted, e.g. Neon, Supabase, Railway)
+* *(Optional for Android builds)*: **Android Studio** & **Java JDK 21**
 
 ---
 
-### Step 1: Clone and Install Dependencies
+### Step 1: Clone and Install
 
-1. Clone this repository to your local machine:
-   ```bash
-   git clone <your-repo-url>
-   cd bharatchat
-   ```
-2. Install dependencies for the main Next.js application:
-   ```bash
-   npm install
-   ```
-3. Install dependencies for the real-time chat service:
-   ```bash
-   cd mini-services/chat-service
-   npm install
-   cd ../..
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/shouryasarkar713/BharatChat-App.git
+cd BharatChat-App
+
+# Install dependencies for the main Next.js app
+npm install
+
+# Install dependencies for the real-time chat service
+cd mini-services/chat-service
+npm install
+cd ../..
+```
 
 ---
 
 ### Step 2: Configure Environment Variables
 
-1. Create a `.env` file in the root of the project:
-   ```env
-   # Database Connection (PostgreSQL)
-   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bharatchat"
+Create a `.env` file in the root directory:
 
-   # NextAuth Settings
-   NEXTAUTH_URL="http://localhost:3000"
-   NEXTAUTH_SECRET="any-super-strong-32-character-secret-string"
-   ```
-   *(Note: You can generate a random secret using `openssl rand -base64 32`)*
+```env
+# Database Connection (PostgreSQL)
+DATABASE_URL="postgresql://postgres:password@localhost:5432/bharatchat"
 
-2. (Optional) If you want to run RabbitMQ for queue persistence, set `RABBITMQ_URL` in the environment:
-   ```env
-   RABBITMQ_URL="amqp://guest:guest@localhost:5672"
-   ```
-   *If `RABBITMQ_URL` is omitted, the chat service automatically falls back to a robust in-memory queue.*
+# NextAuth Configuration
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="super-strong-random-secret-key-32-chars"
 
----
+# Real-Time Socket Service (Client & Server)
+NEXT_PUBLIC_CHAT_SERVICE_URL="http://localhost:3003"
+CHAT_SERVICE_URL="http://localhost:3003"
+PORT="3003"
 
-### Step 3: Setup the Database
-
-1. Apply the database migrations to initialize the schema:
-   ```bash
-   npx prisma db push
-   ```
-2. Generate the Prisma Client:
-   ```bash
-   npx prisma generate
-   ```
+# Optional: Remote Capacitor Server URL for testing mobile builds against staging
+# CAPACITOR_SERVER_URL="https://bharat-chat-app-vqn8.vercel.app"
+```
 
 ---
 
-### Step 4: Run the Application
+### Step 3: Initialize Database
 
-You need to run both the Next.js frontend and the Socket.IO chat service:
+```bash
+# Push Prisma schema to your PostgreSQL database
+npm run db:push
 
-1. **Start the Next.js App** (from the project root):
-   ```bash
-   npm run dev
-   ```
-   This will start the frontend web app on `http://localhost:3000`.
-
-2. **Start the Chat Service** (from the chat-service directory):
-   ```bash
-   cd mini-services/chat-service
-   npm run dev
-   ```
-   This will start the Socket.IO server on `http://localhost:3003`.
+# Generate Prisma Client
+npm run db:generate
+```
 
 ---
 
-### Step 5: Initialize Test Accounts
+### Step 4: Run the Application Locally
 
-1. Open your browser and navigate to `http://localhost:3000`.
-2. Under the login form, click **Initialize test accounts** (or trigger a POST request to `/api/auth/seed`). This will seed three pre-configured accounts:
-   * **Alice**: `alice@chat.dev` / `password123`
-   * **Bob**: `bob@chat.dev` / `password123`
-   * **Carol**: `carol@chat.dev` / `password123`
-3. You can log in as Alice in one browser window and Bob in another (e.g. Incognito) to start exchanging encrypted, real-time messages!
+Start both the frontend web app and the real-time chat service:
 
----
+```bash
+# Terminal 1: Start Next.js frontend (Port 3000)
+npm run dev
 
-### Step 6: Run tests and coverage
+# Terminal 2: Start Socket.IO Chat Service (Port 3003)
+cd mini-services/chat-service
+npm run dev
+```
 
-The project contains a Jest and React Testing Library suite covering core utility libraries (cryptography, content moderation), React hooks, and UI components:
-
-1. **Run all tests**:
-   ```bash
-   npm run test
-   ```
-2. **Generate test coverage reports**:
-   ```bash
-   npm run test:coverage
-   ```
-   Interactive HTML reports can be viewed under the `/coverage/lcov-report/index.html` directory.
+Open `http://localhost:3000` in your browser.
 
 ---
 
-## 🚀 Scaling for Production (RabbitMQ & Redis)
+### Step 5: Seed Test Accounts
 
-For production environments requiring horizontal scaling across multiple chat servers:
+Click **"Initialize test accounts"** on the login page (or trigger `POST /api/auth/seed`) to create pre-configured test users:
+* **Alice**: `alice@chat.dev` / `password123`
+* **Bob**: `bob@chat.dev` / `password123`
+* **Carol**: `carol@chat.dev` / `password123`
 
-1. **Queue (RabbitMQ)**:
-   Ensure a RabbitMQ instance is running (e.g. via Docker):
-   ```bash
-   docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
-   ```
-   Provide the `RABBITMQ_URL` env variable to the chat service before launching.
+Log in as Alice in one browser and Bob in another (or Incognito window) to start testing real-time encrypted messaging.
 
-2. **Socket.IO Broadcast (Redis)**:
-   Run a Redis container:
-   ```bash
-   docker run -d --name redis -p 6379:6379 redis:7
-   ```
-   Install the Redis adapter dependencies:
-   ```bash
-   cd mini-services/chat-service
-   npm install @socket.io/redis-adapter redis
-   ```
-   Uncomment the Redis adapter configuration code in `mini-services/chat-service/index.ts` (lines 120-126) to allow multi-node room communication.
+---
+
+## 📱 Mobile App Development (Capacitor & Android)
+
+```bash
+# Sync web build and assets with Android project
+npm run cap:sync
+
+# Open Android project in Android Studio
+npm run cap:android
+```
+
+From Android Studio, you can run the app directly on an Android Emulator or physical device connected via USB.
+
+---
+
+## 🧪 Automated Testing Suite
+
+BharatChat includes an extensive test suite covering cryptographic protocols, edge cases, cross-platform communication, moderation, and UI interactions:
+
+```bash
+# Run all 9 test suites (59 tests)
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate code coverage reports
+npm run test:coverage
+```
+
+### Verified Test Suites:
+* `src/__tests__/communication-matrix.test.ts` — Cross-platform encryption/decryption across all 4 permutations (App $\leftrightarrow$ Web), Indic languages, emojis, and large payloads.
+* `src/__tests__/crypto.test.ts` — AES-GCM 256-bit key derivation, tamper resistance, and base64 serialization.
+* `src/__tests__/encrypted-attachments.test.ts` — Voice note and photo binary encryption/decryption roundtrips.
+* `src/__tests__/burn-timer.test.ts` — Countdown timer synchronization, clock skew compensation, and auto-purge.
+* `src/__tests__/moderation.test.ts` — Content safety evaluation and Scunthorpe problem immunity.
+* `src/__tests__/edge-cases.test.ts` — Malformed payloads, empty inputs, network disconnect recovery.
+* `src/__tests__/avatar.test.tsx`, `src/__tests__/theme-toggle.test.tsx`, `src/__tests__/use-mobile.test.ts` — React UI components.
+
+---
+
+## 🚀 CI/CD & Automated Deployment
+
+* **Web Deployment**: Automatically deployed to **Vercel** on every push to `main`.
+* **Android APK Pipeline**: Automated via **GitHub Actions** (`.github/workflows/build-apk.yml`):
+  1. Installs Node.js & Java JDK 21.
+  2. Syncs Capacitor Android assets.
+  3. Builds debug APK using Gradle (`./gradlew assembleDebug`).
+  4. Uploads build artifact (`BharatChat-debug-apk`).
+  5. Automatically deploys to **Firebase App Distribution** for tester distribution.
+
+---
+
+## 📜 License
+
+This project is open source and available under the [MIT License](LICENSE).
